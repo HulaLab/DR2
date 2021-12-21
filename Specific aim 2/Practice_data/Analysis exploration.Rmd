@@ -1,0 +1,153 @@
+---
+title: 'Preliminary investigations of visual world paradigm data: Dynamic GLMs and
+  Dynamic Tree-Based Item Response Models'
+author: "AMS"
+date: "12/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(readxl)
+library(dagitty)
+#install.packages('ggdag')
+library(ggdag)
+```
+### Loading Data
+When the data is extracted from the edf file it was in a old excel form that neither my computer or R liked.  I opened and saved it as a newer version of an excel workbook, though a csv file would work too.It would be worthwhile to double check to see if this excel file looks correct.
+
+```{r}
+#change path to your datafile path
+# T12721_1 <- read_excel("C:/Users/alexa/Dropbox/VWP_PRACTICE_REDEPLOY_deploy/results/T12721_1/T12721_1.xlsx")
+
+
+```
+
+# Directed Acyclic Graphs
+## Need to think about The flow of expected cognitive properties.  Consider Figures below.  Does the expected eye track always match the hypothesized cognitive process order?
+
+Consider the DAG bewlow where, which is the hypothesized input. 
+```{r}
+
+Primary_hyp <- dagify(
+  Target ~ S,
+  S ~ P,
+  P ~ Input,
+  exposure = "Input",
+  outcome = "Target"
+)
+
+tidy_dagitty(Primary_hyp)
+
+ggdag(Primary_hyp, layout = "circle")
+```
+```{r}
+Phon_target<- dagify(
+  Target ~ P,
+  P ~ Input,
+  exposure = "Input",
+  outcome = "Target"
+)
+ggdag(Phon_target, layout = "circle")
+``` 
+```{r}
+sem_target <- dagify(
+  S ~ Target ,
+  P ~ Input,
+  exposure = "Input",
+  outcome = "Target"
+)
+
+ggdag(sem_target, layout = "circle")
+```
+```{r}
+chaos <- dagify(
+  Target ~ P,
+  Target ~ S,
+  P ~ S,
+  S ~ P,
+  Target ~ U,
+  P ~ U,
+  S ~ U,
+  U ~ P,
+  U ~ S
+  P ~ Input,
+  exposure = "Input",
+  outcome = "Target"
+)
+ggdag(chaos, layout = "circle")
+``` 
+
+## Data management
+First, create dataframe that includes only the variables from from Schmidt et al 2021 and remove original dataframe to save memory.
+
+
+
+```{r}
+df = Practice_xls
+
+data = data.frame(  
+  trial = df$TRIAL_INDEX,
+  person = df$RECORDING_SESSION_LABEL,
+  time = df$TIMESTAMP,
+  item = df$targetword,
+  y = df$RIGHT_FIX_INDEX
+)
+  #Target_fixation = rbinom(nrow(df), size = 1, prob = 0.8),
+  #Phon_competitor = rbinom(nrow(df), size = 1, prob = 0.6),
+  #Sem_competitor = rbinom(nrow(df), size = 1, prob = 0.4),
+  #Unrel_competitor = rbinom(nrow(df), size = 1, prob = 0.1)) #%>%
+  #yjti = ACCURACY,
+  #AR_phon2sem = ,
+  #AR_phon2target = ,
+  #AR_sem2target = )
+```
+  
+#Duplicate data for number of nodes. example below n nodes = 2
+creates the new data frame with the inclusion of the node variable, first by copying the data for each node and then combining the copies into a single data frame. Note that the number of rows for ```data.node [nrow(data.node)]``` should be equal to $ number.of.nodes×nrow(data)$
+```{r}
+number.of.nodes <- 2 # change to 4 later
+for (node in 1:number.of.nodes){
+data.copy <- data
+data.copy$node <- rep(node, nrow(data))
+if (node==1){data.node <- data.copy} else {data.node <- rbind(data.node,data.copy)}
+}
+```
+
+#Create variable yy, not exactly sure where this comes from in the paper, but i think its the response to node of interest
+```{r}
+yy.list <- list(list(1,1,0),list(1,0,NA))
+data.node$yy = NA
+```
+# I think that the periods are messing up the code block below within variable ```y```
+
+
+```{r}
+for (observation in 1:nrow(data.node)){
+data.node$yy[observation] <- yy.list[[data.node$node[observation]]][[data.node$y[observation]]]
+}
+```
+
+```{r}
+data.node$y = ifelse()
+```
+
+
+#Calculate empircal logit
+
+```{r}
+data.el = data.frame(
+  trial = data.node$trial,
+  person = data.node$person,
+  time = data.node$time,
+  node = data.node$node,
+  yy = 
+)
+head(data.el)
+```
