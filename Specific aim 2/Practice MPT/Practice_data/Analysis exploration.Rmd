@@ -221,17 +221,18 @@ Empirical.Logit$empirical.logit[Empirical.Logit$empirical.logit > 10^6] <- 10^6
 row.index <- 1
 
 for (trial in 1:length(unique.trial)){
-for (node in 1:length(unique.node)){
-
-Empirical.Logit.trial.node <- Empirical.Logit[(Empirical.Logit$trial==unique.trial[trial] 
-& Empirical.Logit$node==unique.node[node]),]
-autocorrelations <- acf(Empirical.Logit.trial.node$empirical.logit, 
-lag.max = time.lag.max, plot=FALSE)
-autocorrelations <- autocorrelations$acf[2:(time.lag.max + 1)]
-partial.autocorrelations <- pacf(Empirical.Logit.trial.node$empirical.logit, 
-lag.max = time.lag.max, na.action=na.pass, plot=FALSE)
-partial.autocorrelations <- c(partial.autocorrelations$acf)
-for (time.lag in 1:time.lag.max){
+  for (node in 1:length(unique.node)){
+    Empirical.Logit.trial.node <-
+      Empirical.Logit[(Empirical.Logit$trial==unique.trial[trial] 
+                       & Empirical.Logit$node==unique.node[node]),]
+    autocorrelations <- acf(Empirical.Logit.trial.node$empirical.logit, 
+                            lag.max = time.lag.max, plot=FALSE)
+    autocorrelations <- autocorrelations$acf[2:(time.lag.max + 1)]
+    partial.autocorrelations <- pacf(Empirical.Logit.trial.node$empirical.logit, 
+                                     lag.max = time.lag.max,
+                                     na.action=na.pass, plot=FALSE)
+    partial.autocorrelations <- c(partial.autocorrelations$acf)
+    for (time.lag in 1:time.lag.max){
 AC.PAC[(row.index + time.lag - 1),] <- c(unique.trial[trial], unique.node[node], time.lag, 
 autocorrelations[time.lag], partial.autocorrelations[time.lag])
 }
