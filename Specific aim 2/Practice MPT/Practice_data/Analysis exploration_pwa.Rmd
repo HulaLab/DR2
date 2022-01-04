@@ -1,0 +1,298 @@
+---
+title: 'Preliminary investigations of visual world paradigm data: Dynamic GLMs and
+  Dynamic Tree-Based Item Response Models'
+author: "AMS"
+date: "12/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(readxl)
+library(dagitty)
+#install.packages('ggdag')
+library(ggdag)
+```
+### Loading Data
+When the data is extracted from the edf file it was in a old excel form that neither my computer or R liked.  I opened and saved it as a newer version of an excel workbook, though a csv file would work too.It would be worthwhile to double check to see if this excel file looks correct.
+
+```{r}
+library(readxl)
+Practice_xls <- read_excel("Participant2.xlsx") %>% 
+  filter(condition != "practice")
+```
+
+# Right_IA_0_sample count is supposed to index the participant not looking at any of the targets.  We get values $ 1-10 $. Removing all of the values greater than 0 for the time being, but we should address this. 
+
+```{r}
+unique(Practice_xls$RIGHT_IA_0_SAMPLE_COUNT)
+df = Practice_xls %>%
+  filter(RIGHT_IA_0_SAMPLE_COUNT < 1)
+```
+
+# Directed Acyclic Graphs
+## Need to think about The flow of expected cognitive properties.  Consider Figures below.  Does the expected eye track always match the hypothesized cognitive process order? 
+
+```{r}
+library(treemap)
+library(DiagrammeR)
+#Create tree structure
+TreeStructure = Node$new("Attempt")
+UnrelComp = TreeStructure$AddChild("UnrelComp")
+PhonProcessing = TreeStructure$AddChild("Phon Processing")
+PhonComp = PhonProcessing$AddChild("PhonComp")
+SemProcessing = PhonProcessing$AddChild("Sem Processing")
+SemComp = SemProcessing$AddChild("SemComp")
+Target = SemProcessing$AddChild("Target")
+
+#Add Probabilities 
+TreeStructure$"UnrelComp"$p <- '1- PP'
+TreeStructure$"Phon Processing"$p <- 'PP'
+TreeStructure$"PhonComp"$p <- 'PC'
+TreeStructure$"Sem Processing"$p <- '1-PC'
+TreeStructure$"SemComp"$p <- '1-T'
+TreeStructure$"Target"$p <- 'T'
+
+print(TreeStructure, "p")
+SetNodeStyle(TreeStructure, style = "filled,rounded", shape = "box", 
+             fontname = "helvetica", tooltip = GetDefaultTooltip)
+Do(TreeStructure$leaves, function(node) SetNodeStyle(node, shape = "egg"))
+plot(TreeStructure)
+``` 
+## I actually now think this is wrong because there is always some level of phonological processing they are do it right or wrong.
+
+```{r}
+#Create tree structure
+TreeStructure2 = Node$new("Lexical Phonology (Node 1)") #must assume they access some sort of real word
+Phon_correct = TreeStructure2$AddChild("Phon (p)")
+Phon_comp = TreeStructure2$AddChild("Phon Comp (1-p)")
+LexSem = Phon_correct$AddChild("Lexical Semantics (Node 2)" )
+Sem = LexSem$AddChild("Sem Comp (1-c)")
+Correct = LexSem$AddChild("Correct (c)")
+
+
+plot(TreeStructure2)
+``` 
+```{r}
+
+#Create tree structure
+TreeStructure3= Node$new("Auditory in (Node 1)")
+Phon_correct = TreeStructure3$AddChild("Lex Phon (p)")
+Phon_incorrect = TreeStructure3$AddChild("Phon_i (1-p)  (Node 2)")
+Phon_dis = Phon_incorrect$AddChild("Phon comp (f)")
+Phon_unrel =Phon_incorrect$AddChild("Unrel Comp (1-f)")
+LexSem = Phon_correct$AddChild("Lexical Semantics (Node 3)")
+Correct = LexSem$AddChild("Correct (c)")
+Sem_Comp = LexSem$AddChild("Sem Comp (1-c)")
+
+
+plot(TreeStructure3)
+```
+# Note that we will have missing values within node 2 and node 3
+- binary responses for Correct and Sem comp are not accessible through Node 2 and Phon comp and Unrel Comp are inaccessible through Node 3.
+
+```{r}
+#Create tree structure
+TreeStructure3= Node$new("Auditory in (Node 1)")
+Phon_correct = TreeStructure3$AddChild("Lex Phon (p)")
+Phon_incorrect = TreeStructure3$AddChild("Phon_i (1-p)")
+Phon_dis = Phon_incorrect$AddChild("Phon comp (f)")
+Phon_unrel =Phon_incorrect$AddChild("Unrel Comp (1-f)")
+LexSem = Phon_correct$AddChild("Lexical Semantics (Node 3)")
+Correct = LexSem$AddChild("Correct (c)")
+Sem_Comp = LexSem$AddChild("Sem Comp (1-c)")
+``` 
+
+
+## Create data frame equal to Table 1 in Neivera et al. We do NOT have a y variable so I am going to try and make it. This should be double checked by the team.
+
+
+```{r}
+df2 = Practice_xls %>%
+  rename(aoi1 = RIGHT_IA_1_SAMPLE_COUNT) %>%
+  rename(aoi2 = RIGHT_IA_2_SAMPLE_COUNT) %>%
+  rename(aoi3 = RIGHT_IA_3_SAMPLE_COUNT) %>%
+  rename(aoi4 = RIGHT_IA_4_SAMPLE_COUNT)
+
+#create single column showing what aoi participant was looking at
+df2$aoi_all = ifelse(df2$aoi1 > 0, 1,
+              ifelse(df2$aoi2 > 0, 2, 
+                     ifelse(df2$aoi3 > 0, 3, 4)))
+
+df2$y_5 = ifelse(df2$aoi_all == df2$unrelated_location, 0, 
+               ifelse(df2$aoi_all == df2$phonemic_location, 1,
+                      ifelse(df2$aoi_all == df2$semantic_location, 2,
+                             ifelse(df2$aoi_all == df2$target_location, 3, 4)))) 
+# yy.list is the hierachical structure of available steps in the tree model. 
+
+library(tidyr)
+
+df2 = df2 %>%
+  mutate(y =  na_if(y_5, 4)) %>% 
+  fill(y, .direction = "up")
+
+df3 = data.frame(  
+  trial = df2$TRIAL_INDEX,
+  person = rep(2, nrow(df2)),
+  time = df2$BIN_START_TIME,
+  item = df2$targetword,
+  y = df2$y
+)
+```
+
+```{r}
+unique(df3$y)
+```
+
+
+<center>
+"Non-fixation events (blinks and saccades) were treated in the same way, attributing the duration of blink or saccade to the next object that was fixated; as a result, there were no missing polytomous data in the time series for a given trial, prior to modeling multinomial processing."
+</center>
+
+```{r}
+data = df3
+
+head(data)
+```
+
+
+
+#Merge left and right data sets by create single "fixation index" col. This function will need to be uncommented when we add all participants
+```{r}
+#data_merge = data
+#data_merge$fixation =ifelse(data$RIGHT_FIX_INDEX != ".", data$RIGHT_FIX_INDEX, data$LEFT_FIX_INDEX)
+```
+  
+#Duplicate data for number of nodes. example below n nodes = 2
+creates the new data frame with the inclusion of the node variable, first by copying the data for each node and then combining the copies into a single data frame. Note that the number of rows for ```data.node [nrow(data.node)]``` should be equal to $ number.of.nodes×nrow(data)$
+```{r}
+number.of.nodes <- 2 # change to 4 later
+for (node in 1:number.of.nodes){
+data.copy <- data
+data.copy$node <- rep(node, nrow(data))
+if (node==1){data.node <- data.copy} else {data.node <- rbind(data.node,data.copy)}
+}
+```
+
+#Create variable yy, not exactly sure where this comes from in the paper, but i think its the response to node of interest
+```{r}
+yy.list <- list(list(1,1,0),list(1,0,NA))
+```
+# I think that the periods are messing up the code block below within variable ```y```
+
+
+```{r}
+for (observation in 1:nrow(data.node)){
+data.node$yy[observation] <- yy.list[[data.node$node[observation]]][[data.node$y[observation]]]
+}
+```
+
+```{r}
+data.node$y = ifelse()
+```
+
+
+#Calculate empircal logit
+First, create data.el, as done by naveirmd.github.io...
+
+```{r}
+data.el = data.frame(
+  trial = data.node$trial,
+  person = data.node$person,
+  time = data.node$time,
+  node = data.node$node,
+  yy = data.node$yy
+)
+head(data.el)
+```
+
+#Assign unique values for trial, time, and node.
+
+```number.variables``` is the number of variables used to estimate the $empirical.logit$
+
+$Empirical.Logit$ is a matrix with each row having unique combinations of $trial$, $time$, and $node$ 
+
+```{r}
+unique.trial <- sort(unique(data.el$trial))
+unique.time <- sort(unique(data.el$time))
+unique.node <- sort(unique(data.el$node))
+
+number.variables <- 3
+
+Empirical.Logit <- matrix(nrow=prod(length(unique.trial),length(unique.time),
+length(unique.node)), ncol = (number.variables + 1))
+```
+
+#Estimate Empirical Logits
+Line 1 in the code above simply sets the initial value for the $row.index$ we’ll use to specify what row of $Empirical.Logit$ we’re currently using. Lines 3-5 indicate that we’re repeating the following process for each unique combination of $trial$, $time$, and $node$. Line 7 extracts the rows of $data.el$ that match the unique combination of $trial$, $node$, and $time$ we’re calculating the empirical logit for, calling this variable $data.el.trial.time.node.$ Line 9 extracts the values for $yy$ from $data.el.trial.time.node$, which will be used to calculate the empirical logit. Lines 10-11 calculate the empirical logit, using the formula ```empirical.logit=log(proportion1−proportion)```, where the proportion is the proportion of $yy.trial.time.node$ equal to one $(∑yylength(yy))$. Lines 17-18 turn Empirical.Logit into a dataframe, with the appropriate names for its variables. Lines 19-20 deal with any cases where $empirical.logit=±∞$, which can occur when proportion=0 or proportion=1. Because the autocorrelations and partial autocorrelations cannot be calculated with infinite empirical logits, we set these values to extremely large values in magnitude (in this case, ±106).
+
+Looking at Empirical.Logit, we should now have the calculated values for empirical logit:
+
+
+```{r}
+row.index <- 1
+
+for (trial in 1:length(unique.trial)){
+for (time in 1:length(unique.time)){
+for (node in 1:length(unique.node)){
+
+data.el.trial.time.node <- data.el[(data.el$trial==unique.trial[trial] 
+& data.el$time==unique.time[time] & data.el$node==unique.node[node]),]
+yy.trial.time.node <- data.el.trial.time.node$yy
+proportion <- sum(yy.trial.time.node[!is.na(yy.trial.time.node)])/length(yy.trial.time.node)
+empirical.logit <- log(proportion/(1 - proportion))
+Empirical.Logit[row.index,] <- c(unique.trial[trial], unique.time[time], 
+unique.node[node], empirical.logit)
+row.index <- row.index + 1
+}}}
+
+Empirical.Logit <- data.frame(Empirical.Logit)
+names(Empirical.Logit) <- c("trial", "time", "node", "empirical.logit")
+Empirical.Logit$empirical.logit[Empirical.Logit$empirical.logit < -10^6] <- -10^6
+Empirical.Logit$empirical.logit[Empirical.Logit$empirical.logit > 10^6] <- 10^6
+```
+#Calculate autocorrelation and Partial Autocorrelations
+
+
+#Remove time point 0 from Empirical logit
+```{r}
+
+```
+```{r}
+time.lag.max <- 20
+AC.PAC <- matrix(nrow=prod(length(unique.trial),length(unique.node),time.lag.max), 
+                 ncol=(number.variables + 2))
+
+```
+
+```{r}
+row.index <- 1
+
+for (trial in 1:length(unique.trial)){
+  for (node in 1:length(unique.node)){
+    Empirical.Logit.trial.node <-
+      Empirical.Logit[(Empirical.Logit$trial==unique.trial[trial] 
+                       & Empirical.Logit$node==unique.node[node]),]
+    autocorrelations <- acf(Empirical.Logit.trial.node$empirical.logit, 
+                            lag.max = time.lag.max, plot=FALSE)
+    autocorrelations <- autocorrelations$acf[2:(time.lag.max + 1)]
+    partial.autocorrelations <- pacf(Empirical.Logit.trial.node$empirical.logit, 
+                                     lag.max = time.lag.max,
+                                     na.action=na.pass, plot=FALSE)
+    partial.autocorrelations <- c(partial.autocorrelations$acf)
+    for (time.lag in 1:time.lag.max){
+AC.PAC[(row.index + time.lag - 1),] <- c(unique.trial[trial], unique.node[node], time.lag, 
+autocorrelations[time.lag], partial.autocorrelations[time.lag])
+}
+row.index <- row.index + time.lag.max
+}}
+
+AC.PAC <- data.frame(AC.PAC)
+names(AC.PAC) <- c("trial", "node", "time.lag", "autocorrelation", "partial.autocorrelation")
+```
