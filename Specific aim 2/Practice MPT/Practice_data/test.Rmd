@@ -1,0 +1,140 @@
+---
+title: "Bayesian MPT"
+author: "AMS"
+date: "1/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this vignette we will try to fit a bayesian MPT model of our eye tracking data matching the structure of the tree below.
+```{r, results='hide'}
+library(readxl)
+library(rstan)
+library(tidyverse)
+library(data.tree)
+```
+
+```{r}
+#load data
+library(readxl)
+Practice_xls <- read_excel("Participant2.xlsx") %>% 
+  filter(condition != "practice")
+
+#Wrangle data
+df2 = Practice_xls %>%
+  rename(aoi1 = RIGHT_IA_1_SAMPLE_COUNT) %>%
+  rename(aoi2 = RIGHT_IA_2_SAMPLE_COUNT) %>%
+  rename(aoi3 = RIGHT_IA_3_SAMPLE_COUNT) %>%
+  rename(aoi4 = RIGHT_IA_4_SAMPLE_COUNT)
+
+#create single column showing what aoi participant was looking at
+df2$aoi_all = ifelse(df2$aoi1 > 0, 1,
+                     ifelse(df2$aoi2 > 0, 2, 
+                            ifelse(df2$aoi3 > 0, 3, 4)))
+
+df2$y_5 = ifelse(df2$aoi_all == df2$unrelated_location, 0, 
+                 ifelse(df2$aoi_all == df2$phonemic_location, 1,
+                        ifelse(df2$aoi_all == df2$semantic_location, 2,
+                               ifelse(df2$aoi_all == df2$target_location, 3, 4)))) 
+# yy.list is the hierachical structure of available steps in the tree model. 
+
+library(tidyr)
+
+df2 = df2 %>%
+  mutate(y =  na_if(y_5, 4)) %>% 
+  fill(y, .direction = "up")
+
+#check to m ake sure we only have 0 through 3
+unique(df2$y)
+
+#Create count for each var
+df3 = data.frame(Count = df2$y,
+                 resp = ifelse(df2$y == 0, "Unrelated",
+                               ifelse(df2$y == 1, "Phonological",
+                                      ifelse(df2$y == 2, "Semantic", "Correct"))))
+df3 %>%
+  count(resp)
+
+```
+
+```{r}
+#Create tree structure
+TreeStructure3= Node$new("Phonological Proccessing of input")
+Lex_Phon= TreeStructure3$AddChild("Phonological Distractor (a)")
+Unrelated = TreeStructure3$AddChild("Unrelated (1-a)")
+Sem = Lex_Phon$AddChild("Semantic distractor (1-b)")
+Correct = Lex_Phon$AddChild("Correct (b)")
+Correct = Sem$AddChild("Correct (c)")
+Phon_Dis = Sem$AddChild("Phonologial Distractor 1-c")
+
+
+plot(TreeStructure3)
+```
+Table 1. Psychological Interpretation of parameters in above MPT model
+
+| Parameter      | Description |
+| ----------- | ----------- |
+| a      |  Probability of phonological competitor        |
+| b   | Probability of semantic competitor        |
+| c   | Probability of correct response         |
+
+Note that we need to think of the probability in which all outcomes are possible such that
+
+$$(Unrelated|a,b,c) = 1 - a \\
+(Phonologial.Distractor|a,b,c) = a  ⋅b⋅ (1-c) \\
+(Semantic.Distractor|a,b,c) = a⋅(1-b) \\
+(Correct|a,b,c) = a⋅b+a⋅(1-b) ⋅c
+  \\ $$
+  
+
+The above code is defined similarly:
+
+$$\theta_u = 1 - a \\
+\theta_p = a  ⋅b +a⋅b (1-c)\\
+\theta_s = a⋅(1-b) \\
+\theta_c = a⋅b+a⋅(1-b) ⋅c\\
+\theta = (theta_u, theta_p, theta_s, theta_c) \\
+gaze \sim (\theta) \\
+a,b,c \sim \beta eta
+
+$$
+
+# Create Rstan model from above probability distribution and parameter estimates
+
+```
+data { 
+  int<lower = 1> N_trials;
+  int<lower = 0, upper = N_trials> resp[4];
+}
+parameters {
+  real<lower = 0, upper = 1> a;
+  real<lower = 0, upper = 1> b;
+  real<lower = 0, upper = 1> c;
+} 
+transformed parameters {
+  simplex[5] theta;
+  theta[1] = 1 - a; //Pr_unrel
+  theta[2] = a + a * b * (1-c); //Pr_phon
+  theta[3] = a * (1-b);  //S
+  theta[4] = a * (b) + a  * (1-b) * c; //Pr_correct
+}
+model {
+  target += beta_lpdf(a | 2, 2);
+  target += beta_lpdf(b | 2, 2);
+  target += beta_lpdf(c | 2, 2);
+  target += multinomial_lpmf(resp | theta);
+}
+generated quantities{
+    int pred_resp[5];
+  pred_ans = multinomial_rng(theta, 5);
+}
+```
+
+```{r}
+#Run model
+
+
+
