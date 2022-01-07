@@ -62,15 +62,36 @@ df3 %>%
 
 ```{r}
 #Create tree structure
-TreeStructure3= Node$new("Phonological Proccessing of input")
-Lex_Phon= TreeStructure3$AddChild("Phonological Distractor (a)")
-Unrelated = TreeStructure3$AddChild("Unrelated (1-a)")
-Sem = Lex_Phon$AddChild("Semantic distractor (1-b)")
-Correct = Lex_Phon$AddChild("Correct (b)")
-Correct = Sem$AddChild("Correct (c)")
+TreeStructure3= Node$new("(Node 1)Auditory input")
+Lex_Phon= Node$new("(Node 2) Anticipated // Phonological Distractor (a)")
+TreeStructure3$AddChildNode(Lex_Phon)
+Unrelated = TreeStructure3$AddChild("Unrelated (1-a) [y*tji1] ")
+Sem = Lex_Phon$AddChild("(Node 3)Anticipated // Semantic distractor (1-b) [y*tji3]")
+Lex_Phon$AddChildNode(Sem)
+Correct = Lex_Phon$AddChild("Correct (b) [y*tji2]")
+Correct = Sem$AddChild("Correct (c) [y*tji4]")
 Phon_Dis = Sem$AddChild("Phonologial Distractor 1-c")
-
-
+SetNodeStyle(TreeStructure3,  shape = "egg", 
+             fontname = "helvetica", tooltip = GetDefaultTooltip)
+Do(TreeStructure3$leaves, function(node) SetNodeStyle(node, shape = "box"))
+plot(TreeStructure3)
+```
+```{r}
+#Create tree structure
+TreeStructure3= Node$new("(Node 1)Auditory input")
+Unrelated = TreeStructure3$AddChild("Unrelated (1-a) [y*tji1] ")
+Lex_Phon= Node$new("(Node 2) Anticipated // Correct Phonological access (a)")
+TreeStructure3$AddChildNode(Lex_Phon)
+Phon_dis = TreeStructure3$AddChild("Phonological Distractor (1-a) [y*tji1] ")
+Sem_access = Lex_Phon$AddChild("(Node 3)Anticipated // Semantic Access (1-b) [y*tji3]")
+Lex_Phon$AddChildNode(Sem_access)
+Correct = Lex_Phon$AddChild("Correct (b) [y*tji2]")
+Phon_check = 
+Correct = Sem$AddChild("Correct (c) [y*tji4]")
+Phon_Dis = Sem$AddChild("Phonologial Distractor 1-c")
+SetNodeStyle(TreeStructure3,  shape = "egg", 
+             fontname = "helvetica", tooltip = GetDefaultTooltip)
+Do(TreeStructure3$leaves, function(node) SetNodeStyle(node, shape = "box"))
 plot(TreeStructure3)
 ```
 Table 1. Psychological Interpretation of parameters in above MPT model
@@ -103,8 +124,8 @@ a,b,c \sim \beta eta
 $$
 
 # Create Rstan model from above probability distribution and parameter estimates
-
-```
+```{r}
+mpt_simp = "
 data { 
   int<lower = 1> N_trials;
   int<lower = 0, upper = N_trials> resp[4];
@@ -115,7 +136,7 @@ parameters {
   real<lower = 0, upper = 1> c;
 } 
 transformed parameters {
-  simplex[5] theta;
+  simplex[4] theta;
   theta[1] = 1 - a; //Pr_unrel
   theta[2] = a + a * b * (1-c); //Pr_phon
   theta[3] = a * (1-b);  //S
@@ -129,12 +150,30 @@ model {
 }
 generated quantities{
     int pred_resp[5];
-  pred_ans = multinomial_rng(theta, 5);
-}
+    pred_resp = multinomial_rng(theta, 5);
+}"
+
 ```
 
-```{r}
+
 #Run model
 
+```{r}
+N_trials = 5309
+resp = as.integer(c(1211, 1423, 1258, 1417))
 
+#data for model
+data_sMPT = list(N_trials = as.integer(N_trials),
+                 resp = as.integer(c(1211, 1423, 1258, 1417)))
+
+
+fit_sMPT = stan(
+  model_code = mpt_simp,  # Stan program
+  data = data_sMPT,    # named list ofdata
+  chains = 1,             # number of Markov chains
+  warmup = 1000,          # number of warmup iterations per chain
+  iter = 2000,            # total number of iterations per chain
+  cores = 1,              # number of cores (could use one per chain)
+  )
+```
 

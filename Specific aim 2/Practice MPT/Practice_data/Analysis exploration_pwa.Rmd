@@ -18,6 +18,7 @@ library(readxl)
 library(dagitty)
 #install.packages('ggdag')
 library(ggdag)
+library(data.tree)
 ```
 ### Loading Data
 When the data is extracted from the edf file it was in a old excel form that neither my computer or R liked.  I opened and saved it as a newer version of an excel workbook, though a csv file would work too.It would be worthwhile to double check to see if this excel file looks correct.
@@ -31,7 +32,6 @@ Practice_xls <- read_excel("Participant2.xlsx") %>%
 # Right_IA_0_sample count is supposed to index the participant not looking at any of the targets.  We get values $ 1-10 $. Removing all of the values greater than 0 for the time being, but we should address this. 
 
 ```{r}
-unique(Practice_xls$RIGHT_IA_0_SAMPLE_COUNT)
 df = Practice_xls %>%
   filter(RIGHT_IA_0_SAMPLE_COUNT < 1)
 ```
@@ -40,8 +40,6 @@ df = Practice_xls %>%
 ## Need to think about The flow of expected cognitive properties.  Consider Figures below.  Does the expected eye track always match the hypothesized cognitive process order? 
 
 ```{r}
-library(treemap)
-library(DiagrammeR)
 #Create tree structure
 TreeStructure = Node$new("Attempt")
 UnrelComp = TreeStructure$AddChild("UnrelComp")
@@ -99,14 +97,16 @@ plot(TreeStructure3)
 
 ```{r}
 #Create tree structure
-TreeStructure3= Node$new("Auditory in (Node 1)")
-Phon_correct = TreeStructure3$AddChild("Lex Phon (p)")
-Phon_incorrect = TreeStructure3$AddChild("Phon_i (1-p)")
-Phon_dis = Phon_incorrect$AddChild("Phon comp (f)")
-Phon_unrel =Phon_incorrect$AddChild("Unrel Comp (1-f)")
-LexSem = Phon_correct$AddChild("Lexical Semantics (Node 3)")
-Correct = LexSem$AddChild("Correct (c)")
-Sem_Comp = LexSem$AddChild("Sem Comp (1-c)")
+TreeStructure3= Node$new("Phonological Proccessing of input")
+Lex_Phon= TreeStructure3$AddChild("Phonological Distractor (a)")
+Unrelated = TreeStructure3$AddChild("Unrelated (1-a)")
+Sem = Lex_Phon$AddChild("Semantic distractor (1-b)")
+Correct = Lex_Phon$AddChild("Correct (b)")
+Correct = Sem$AddChild("Correct (c)")
+Phon_Dis = Sem$AddChild("Phonologial Distractor 1-c")
+
+
+plot(TreeStructure3)
 ``` 
 
 
