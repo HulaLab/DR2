@@ -192,17 +192,18 @@ EL2 = data.el %>%
   na.omit() %>%
   group_by(trial) %>%
   mutate(n_obs = n()) %>%
-  #ungroup() %>%
-  group_by(node, yy) %>%
+  ungroup() %>%
+  group_by(time,node, yy) %>%
   mutate(n_yy = n()) %>%
-  mutate(prop_yy = n_yy/n_obs)
+  mutate(prop_yy = n_yy/sum(n_yy))
 
 Empirical.Logit = data.frame(
   person = EL2$person,
   trial = EL2$trial,
   time = EL2$time,
   node = EL2$node,
-  empirical.logit = (EL2$prop_yy + 0.5) / (EL2$n_obs - EL2$n_yy) + 0.5
+  yy = EL2$yy,
+  empirical.logit = (EL2$prop_yy ) / (EL2$n_obs - EL2$n_yy)
 )
 ```
 
