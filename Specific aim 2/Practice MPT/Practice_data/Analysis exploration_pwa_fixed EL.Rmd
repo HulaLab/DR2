@@ -187,10 +187,15 @@ library(dplyr)
 EL2 = data.el %>%
   group_by(node, trial, person) %>%
   na.omit() %>%
-  mutate(n_yy = cumsum(yy)) %>%
-  mutate(n_obs = length(unique(time))) %>%
-  mutate(prop_yy = n_yy/n_obs) %>%
-  select(time, person, trial, yy, node, n_yy, n_obs, prop_yy)
+  mutate(rep1 = rep(1)) %>%
+  mutate(n_yy = sum(yy))
+  
+EL3 = data.el %>%
+  group_by(trial, node) %>%
+  mutate(cum_sum =cumsum(rep1)) %>%
+  mutate(el = log((estimate +.5)/((cum_sum - estimate)+5)))
+mutate(prop_yy = n_yy/n_obs) %>%
+  select(time, person, trial, yy, node, n_yy, n_obs, prop_yy, rep1)
 
 
 Empirical.Logit = data.frame(
@@ -206,9 +211,10 @@ unique(Empirical.Logit$estimate)
 ### Calculate autocorrelation and Partial Autocorrelations
 
 ```{r}
+top_500 <- Empirical.Logit[1:501,]
 #Autocorrelation 
 #Empirical.Logit$trial = Empirical.Logit$trial - 6
-ac_df = Empirical.Logit %>%
+ac_df = top_500 %>%
   arrange(node, trial, time) %>%
   group_by(node, trial, person) %>%
   mutate(n=1,
