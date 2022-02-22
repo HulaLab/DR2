@@ -362,4 +362,22 @@ data.node = data.node %>%
 #SANITY CHECK: Check to make sure t.lag, c.lag, nor yy.lag include NA 
 summary(data.node)
 ```
+## Declare variable structure for analyses:
+```{r}
+# create correct variable structures 
+data.node$yy.lag <- as.numeric(data.node$yy.lag)
+data.node$t.lag <- as.numeric(data.node$t.lag)
+data.node$c.lag <- as.numeric(data.node$c.lag)
+#data.node$time.coded <- as.numeric(data.node$time.coded)
+data.node$time.coded.centered <- as.numeric(data.node$time.coded.center)
+data.node$item <- as.factor(data.node$item)
+data.node$person <- as.factor(data.node$id)
+data.node$trial <- as.factor(data.node$TRIAL_INDEX)
+data.node$node <- as.factor(data.node$node)
+data.node$node.1 <- as.factor(data.node$node.1)
+data.node$node.2 <- as.factor(data.node$node.2)
+data.node$node.3 <- as.factor(data.node$node.3)
+data.node$obs <- seq(1,nrow(data.node))
 ```
+
+
