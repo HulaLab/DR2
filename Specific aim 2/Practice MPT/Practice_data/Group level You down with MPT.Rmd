@@ -1,0 +1,274 @@
+---
+title: "You down with MPT?"
+author: "AMS"
+date: "1/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#to load data
+library(readxl)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+#Plot tree structure
+library(data.tree)
+#Frequentist multilevel models
+library(lme4)
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library("sjPlot")
+```
+#### Load data and filer out practice
+```{r}
+#load data
+library(readxl)
+Practice_xls_withpractice <- read_excel("Participant2.xlsx")
+Practice_xls <- read_excel("Participant2.xlsx") %>% 
+  filter(condition != "practice")
+```
+
+## Intended MPT structure:
+```{r, echo=FALSE}
+#Create tree structure
+TreeStructure = Node$new("Phonological Input: y*tlji1")
+UnrelComp = TreeStructure$AddChild("Phonological Competitor (ytlji = 4)")
+PhonProcessing = TreeStructure$AddChild("Phonological Processing (y*tlji2)")
+TreeStructure$AddChildNode(PhonProcessing)
+PhonComp = PhonProcessing$AddChild("Semantic Competitor (ytlji = 3)")
+SemProcessing = PhonProcessing$AddChild("Semantic Processing (y*tlji3)")
+PhonProcessing$AddChildNode(SemProcessing)
+SemComp = SemProcessing$AddChild("Unrelated Competitor (ytlji = 2)")
+Target = SemProcessing$AddChild("Target (ytlji = 1)")
+
+#Add Probabilities 
+
+
+print(TreeStructure, "p")
+Do(TreeStructure$leaves, function(node) SetNodeStyle(node, shape = "rectangle"))
+plot(TreeStructure)
+```
+```
+
+## Wrangle data 
+```{r}
+Practice_xls_withpractice <- read_excel("Participant2.xlsx")
+df <- read_excel("Participant2.xlsx") %>% 
+  filter(condition != "practice")
+
+
+df2 = df %>%
+  rename(aoi1 = RIGHT_IA_1_SAMPLE_COUNT) %>%
+  rename(aoi2 = RIGHT_IA_2_SAMPLE_COUNT) %>%
+  rename(aoi3 = RIGHT_IA_3_SAMPLE_COUNT) %>%
+  rename(aoi4 = RIGHT_IA_4_SAMPLE_COUNT)
+
+#Following schmit et al, change all values below 5ms to 0 and above to 10 (pg 14, table expalnation.
+df2$aoi1 = ifelse(df2$aoi1 < 5, 10, 0)
+df2$aoi2 = ifelse(df2$aoi2 < 5, 10, 0)
+df2$aoi3 = ifelse(df2$aoi3 < 5, 10, 0)
+df2$aoi4 = ifelse(df2$aoi4  < 5, 10, 0)
+
+#create single column showing what aoi participant was looking at
+df2$aoi_all = ifelse(df2$aoi1 > 0, 1,
+                     ifelse(df2$aoi2 > 0, 2, 
+                            ifelse(df2$aoi3 > 0, 3,
+                                   ifelse(df2$aoi4 > 0,4, 0))))
+
+df2$y_5 = ifelse(df2$aoi_all == df2$unrelated_location, 2,
+                 ifelse(df2$aoi_all == df2$phonemic_location, 4,
+                        ifelse(df2$aoi_all == df2$semantic_location, 3,
+                               ifelse(df2$aoi_all == df2$target_location, 1, 0)))) 
+# yy.list is the hierachical structure of available steps in the tree model. 
+
+library(tidyr)
+
+df2 = df2 %>%
+  mutate(y =  na_if(y_5, 0)) %>% 
+  fill(y, .direction = "up")
+
+df3 = data.frame(  
+  trial = df2$TRIAL_INDEX,
+  person = rep(2, nrow(df2)),
+  time = df2$BIN_START_TIME,
+  item = df2$targetword,
+  y = df2$y
+)
+```
+
+## Triplicate data for number of nodes = 3
+```{r}
+number.of.nodes <- 3
+for (node in 1:number.of.nodes){
+  data.copy <- df3
+  data.copy$node <- rep(node, nrow(df3))
+  if (node==1){data.node <- data.copy} else {data.node <- rbind(data.node,data.copy)}
+}
+#Sanity check make sure we did the missing data transformation correct
+#does step 1 result in missing data in the form of numerical value 0? (yes)
+unique(df2$aoi_all)
+#Does step 2 result in missing data in the form of numerical value 0? (yes)
+unique(df2$y_5)
+#does step 3 remove na in the form of zero and replace with nedxt highest number in teh sequence? (yes)
+NA_check = data.frame(df2$y_5, df3$y)
+```
+
+## Create variable yy, simplified code. 
+```{r}
+data.node$yy = ifelse(data.node$node== 1 & data.node$y < 4, 1,  #node 1 and correct (sem, unrelated, correct) 
+                      ifelse(data.node$node== 1 & data.node$y == 4, 0, #node 1 and phon distractor
+                             ifelse(data.node$node== 2 & data.node$y == 4, NA, #node 2 and phonological comp
+                             ifelse(data.node$node== 2 & data.node$y == 3, 0, #node 2 and phonological comp
+                             ifelse(data.node$node== 2 & data.node$y < 3, 1,  #node 2 and unrelated or correct
+                             ifelse(data.node$node== 3 & data.node$y > 2, NA, #node 3 and y = phonological or semantic competitor
+                             ifelse(data.node$node== 3 & data.node$y == 2, 0, 1 #node 3 and unrelated competitor, if not unrelated then correct
+                             )))))))
+unique(data.node$yy)
+
+```
+
+## Remove outcome values thare are not possible at node locations
+```{r}
+if (length(which(data.node$node==2 & data.node$y==4))>0){
+  data.node <- data.node[-which(data.node$node==2 & data.node$y==4),]
+}
+#Remove y = 3 or 4 for node 3
+if (length(which(data.node$node==3 & data.node$y>2.1))>0){
+  data.node <- data.node[-which(data.node$node==3 & data.node$y>2.1),]
+}
+
+#Test, node 2 has no y = 4, true
+test_node_2 = data.node %>%
+  filter(node == 2) %>%
+  filter(y ==4)
+nrow(test_node_2)
+#Test, node 3 has no y = 3 or 4, true
+test_node_3 = data.node %>%
+  filter(node == 3) %>%
+  filter(y > 2.1)
+nrow(test_node_3)
+```
+
+#create fail safe data.node, and data.node.orginal, modify data.node below
+```{r}
+data.node.original <- data.node <- data.node[order(data.node$node, data.node$person, data.node$trial, data.node$time),]
+data.node <- data.node[order(data.node$node, data.node$person, data.node$trial, data.node$time),]
+
+#create variables to use later
+data.node$time.coded <-  data.node$time.coded.centered <- rep(0,nrow(data.node))
+
+```
+
+## Create variables node.1, node.2, and node.3
+- node.1: if the participant is looking at phonological comp 0, anything else 1.
+- node.2 At node 2, if the participant is looking at semantic 0, anything else (note phonological no longer in dataset for node = 2)
+-node.3 At node 3, if the participant is looking at unrelated 0, and correct = 1 (note phonological and semantic competitors no longer in dataset for node = 2)
+
+```{r}
+#At node 1, if the participant is looking at phonological comeptitor 0 anything else down the tree, 1
+data.node$node.1 = ifelse(data.node$y == 4, 0, 1)
+#At node 2, if the participant is looking at semantic competitor or phonological, 0 anything else 1
+data.node$node.2 = ifelse(data.node$y > 3, 0, 1)
+#At node 3, if the participant is looking at correct, 1 anything else 0
+data.node$node.3 = ifelse(data.node$y == 2, 0, 1)
+```
+
+## Create variable t and c
+-t: Whether the person is looking at the target. t=1 if y=1, and t=0 otherwise.
+-c: Whether the person is looking at the competitor. c=1 if y=2, and c=0 otherwise.
+```{r}
+node1_df = data.node %>%
+  filter(node == 1)
+node1_df$t = ifelse(node1_df$y != 4, 1,0)
+node1_df$c = ifelse(node1_df$y !=1,1,0)
+
+node2_df = data.node %>%
+  filter(node == 2)
+node2_df$t = ifelse(node2_df$y == !3, 1,0)
+node2_df$c = ifelse(node2_df$y !=1,1,0)
+
+node3_df = data.node %>%
+  filter(node == 3)
+node3_df$t = ifelse(node3_df$y == 1, 1,0)
+node3_df$c = ifelse(node3_df$y !=1, 1,0)
+
+data.node = rbind(node1_df, node2_df, node3_df)
+
+#SANITY CHECK: ARE THERE NOW 3 NODES AGAIN?
+unique(data.node$node)
+```
+
+#Create lag variables: t.lag, c.lag, yy.lag
+- t.lag: The value of t at the previous time point. Undefined for the first time point.
+- c.lag: The value of c at the previous time point. Undefined for the first time point.
+- yy.lag: The value of yy at the previous time point. Undefined for the first time point.
+
+```{r}
+data.node = data.node %>%
+  arrange(node) %>%
+  group_by(node, person, item) %>%
+  mutate(t.lag = lag(t)) %>%
+  mutate(c.lag = lag(c)) %>%
+  mutate(yy.lag = lag(yy))%>%
+  group_by() %>%
+  mutate(time.coded.center = scale(time)) %>%
+  filter(!is.na(t.lag))
+
+#SANITY CHECK: Check to make sure t.lag, c.lag, nor yy.lag include NA 
+summary(data.node)
+```
+
+## Declare variable structure for analyses:
+```{r}
+#create correct variable structures 
+data.node$yy.lag <- as.numeric(data.node$yy.lag)
+data.node$t.lag <- as.numeric(data.node$t.lag)
+data.node$c.lag <- as.numeric(data.node$c.lag)
+data.node$time.coded <- as.numeric(data.node$time.coded)
+data.node$time.coded.centered <- as.numeric(data.node$time.coded.centered)
+data.node$item <- as.factor(data.node$item)
+data.node$person <- as.factor(data.node$person)
+data.node$trial <- as.factor(data.node$trial)
+data.node$node <- as.factor(data.node$node)
+data.node$node.1 <- as.factor(data.node$node.1)
+data.node$node.2 <- as.factor(data.node$node.2)
+data.node$node.3 <- as.factor(data.node$node.3)
+data.node$obs <- seq(1,nrow(data.node))
+```
+
+## Load covariates:
+```{r}
+covariates = read_excel("C:/Users/Brahma/Downloads/VWP_PreTx_assessments_CAC.xlsx")
+```
+
+# MPT modeling
+## Model 1:
+Fixed effects
+- node for the intercept γr
+- t.lag:node for the fixed lag effect λ_{Tr}
+- c.lag:node for the fixed lag effect λ_{Cr}
+- PhonologicalVariable:node for the first experimental condition γ_{1r}
+- Semantic Variable::node for the first experimental condition γ_{2r}
+
+Random effects
+(-1 + node | trial) for the trial random effect δ_{ljir}
+(-1 + t.lag:node + c.lag:node + node | person) for random person effects λ_{Tr}, λ_{Cr}, and θ_{jr}
+(-1 + t.lag:node + c.lag:node + node | item) for random item effects λ_{Tr}, λ_{Cr}, and β_{ir}
+
+```{r}
+## Does not converge: Model.1 <- glmer(yy ~ -1 + node + t.lag:node + c.lag:node + time.coded:node  
+##+ (-1 + node |trial), 
+
+# add in interaction for sem and phon: + phon:node +sem:node
+Model.1 <- glmer(yy ~ -1 + node + t.lag:node + c.lag:node + time.coded.centered:node 
++ (-1 |trial), 
+family = binomial, 
+data = data.node)
+
+summary(Model.1)
+```
