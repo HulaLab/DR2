@@ -169,7 +169,6 @@ head(data.el)
 
 $Empirical.Logit$ is a matrix with each row having unique combinations of $trial$, $time$, and $node$
 
-
 \#Estimate Empirical Logits Line 1 in the code above simply sets the initial value for the $row.index$ we'll use to specify what row of $Empirical.Logit$ we're currently using. Lines 3-5 indicate that we're repeating the following process for each unique combination of $trial$, $time$, and $node$. Line 7 extracts the rows of $data.el$ that match the unique combination of $trial$, $node$, and $time$ we're calculating the empirical logit for, calling this variable $data.el.trial.time.node.$ Line 9 extracts the values for $yy$ from $data.el.trial.time.node$, which will be used to calculate the empirical logit. Lines 10-11 calculate the empirical logit, using the formula `empirical.logit=log(proportion1−proportion)`, where the proportion is the proportion of $yy.trial.time.node$ equal to one $(∑yylength(yy))$. Lines 17-18 turn Empirical.Logit into a dataframe, with the appropriate names for its variables. Lines 19-20 deal with any cases where $empirical.logit=±∞$, which can occur when proportion=0 or proportion=1. Because the autocorrelations and partial autocorrelations cannot be calculated with infinite empirical logits, we set these values to extremely large values in magnitude (in this case, ±106).
 
 \$\$ elog = log\left(\frac{Y + .5}{N - Y + .5}\right) \\
