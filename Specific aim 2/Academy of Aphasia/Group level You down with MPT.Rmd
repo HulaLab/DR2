@@ -27,8 +27,9 @@ library(sjPlot)
 
 ```{r}
 my_files = list.files("~/GitHub/DR2/Specific aim 2/Academy of Aphasia/data")
+
 #Further arguments to read.csv can be passed in ...
-all_csv <- lapply(my_files,read.csv)
+all_csv <- lapply(my_files, read.csv)
 
 #Set the name of each list element to its
 # respective file name. Note full.names = FALSE to
