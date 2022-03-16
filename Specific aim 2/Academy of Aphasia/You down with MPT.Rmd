@@ -1,0 +1,124 @@
+---
+title: "You down with MPT?"
+author: "AMS"
+date: "3/1/2022"
+output: html_document
+---
+
+```{r, warning=FALSE, message=FALSE}
+#working directory package
+library(here)
+#to load data
+library(readxl)
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+#list manipulation
+library(rlist)
+#Plot tree structure
+library(data.tree)
+#Frequentist multilevel models
+library(lme4)
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(sjPlot)
+```
+
+```{r, message=FALSE}
+#load data
+data = read_csv(here("formatted data", "mpt_analysis_data.csv"))
+```
+
+```{r}
+# create correct variable structures 
+data$yy.lag <- as.numeric(data$yy.lag)
+data$t.lag <- as.numeric(data$t.lag)
+data$c.lag <- as.numeric(data$c.lag)
+data$item <- as.factor(data$item)
+data$person <- as.factor(data$id)
+data$trial <- as.factor(data$TRIAL_INDEX)
+data$node <- as.factor(data$node)
+data$node.1 <- as.factor(data$node.1)
+data$node.2 <- as.factor(data$node.2)
+data$node.3 <- as.factor(data$node.3)
+data$obs <- seq(1,nrow(data))
+```
+
+```{r}
+data = data %>%
+  group_by(person, item) %>%
+  mutate(time = row_number())
+```
+
+```{r}
+data = data %>%
+  group_by(person, item) %>%
+  mutate(trial_re = row_number()) %>%
+  ungroup() %>%
+  mutate(obs = seq(1, nrow(data), 1))
+```
+
+### Model fitting, starting small. Unidimensional model with fixed node.
+
+$$ n_{tljir} = \gamma_1 + y^{*'}_{(t-1)ljir^\gamma} + time^{'}_{tljir^\zeta} + \delta_{lji} + \theta_j + \beta_i $$
+$$ \gamma_1 = intercept \\
+ time^{'}_{tljir^\zeta} = \: fixed \: trend \: effect \: (time_{(1,2...n)}) \\
+  y^{*'}_{(t-1)ljir^\gamma} = lag_{t-1}: target: 1, other: 0 \\
+ \delta_{lji} = trial\:level \: random \: effect \\
+ \theta_j = random \: person \: effect \\
+ \theta_j = random \: item \: effect
+ $$
+``` {r}
+data_uni_node1 = data %>% 
+  filter(node == 1)
+
+Node1mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+               data = data_uni_node1,
+               prior = c(prior(normal(0, 2.5), class = Intercept),
+                         prior(normal(0, 10), class = b)), #prior on betas
+                 chains = 4,
+                 cores = 4, 
+                 family = binomial)
+save(Node1mod, file = "fit1.rda")
+```
+
+```{r}
+data_uni_node2 = data %>% 
+  filter(node == 2)
+
+Node2mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+               data = data_uni_node2,
+               prior = c(prior(normal(0, 2.5), class = Intercept),
+                         prior(normal(0, 10), class = b)), #prior on betas
+                 chains = 4,
+                 cores = 4, 
+                 family = binomial)
+save(Node2mod, file = "node2_fit.rda")
+
+data_uni_node3 = data %>% 
+  filter(node == 3)
+
+Node3mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+               data = data_uni_node3,
+               prior = c(prior(normal(0, 2.5), class = Intercept),
+                         prior(normal(0, 10), class = b)), #prior on betas
+                 chains = 4,
+                 cores = 4, 
+                 family = binomial)
+save(Node3mod, file = "node3_fit.rda")
+ ```
+ 
+ 
+ ### fit 
+```{r}
+ brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+               data = data_uni_node1,
+               prior = c(prior(normal(0, 2.5), class = Intercept),
+                         prior(normal(0, 10), class = b)), #prior on betas
+                 chains = 4,
+                 cores = 4, 
+                 family = binomial)
+save(Node1mod, file = "fit1.rda")
+ 
+```

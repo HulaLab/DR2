@@ -1,0 +1,431 @@
+---
+title: "you down with GROUPED mpt"
+author: "AMS"
+date: "2/22/2022"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+#### Load required libraries
+
+```{r, warning=FALSE, message=FALSE}
+#working directory package
+library(here)
+#to load data
+library(readxl)
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+#list manipulation
+library(rlist)
+#Plot tree structure
+library(data.tree)
+#Frequentist multilevel models
+library(lme4)
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(sjPlot)
+
+```
+
+```{r}
+#set WD to data files
+here()
+my_files = list.files(here("raw data"), full.names = TRUE)
+
+#Further arguments to read.csv can be passed in ...
+all_csv <- lapply(my_files, read.csv)
+
+#Set the name of each list element to its
+# respective file name. Note full.names = FALSE to
+# get only the file names, not the full path.
+names(all_csv) <- gsub(".csv","",
+                       list.files(here("raw data"),full.names = FALSE),
+                       fixed = TRUE)
+
+```
+
+\#manipulate data
+
+```{r}
+#remove practice
+library(tidyverse)
+list = all_csv %>%
+  map(~filter(., condition != "practice"))
+list_check = all_csv %>%
+  map(~filter(., condition != "practice"))
+
+```
+
+#### Extract data sets that do not use right eye
+
+-   p11_02 uses left eye
+-   p13_01 uses right eye bus has no data in the interest area variables
+
+```{r}
+#create p11_2 df to manipulate and return to later.
+p11_2 = list[['p11_2']]
+#use pluck to remove p11_02 and 13_01 from list
+pluck(list,  "p11_2") = NULL
+pluck(list,  "p13_01") = NULL
+```
+
+#### Sanity check for above, list should now have two elements less that
+
+```{r}
+list2_check = list
+list2 = list %>%
+  map(~rename(., aoi1 = RIGHT_IA_1_SAMPLE_COUNT)) %>%
+  map(~rename(., aoi2 = RIGHT_IA_2_SAMPLE_COUNT)) %>%
+  map(~rename(., aoi3 = RIGHT_IA_3_SAMPLE_COUNT)) %>%
+  map(~rename(., aoi4 = RIGHT_IA_4_SAMPLE_COUNT))
+```
+
+#### Sanity check: aoi1-4 in list 2 should be equal to the right_IA_1... in list2_check. checking a couple
+
+```{r}
+#participant 2 01
+setequal(list2["p02_01"]$p02_01$aoi1, list2_check["p02_01"]$p02_01$RIGHT_IA_1_SAMPLE_COUNT)
+setequal(list2["p02_01"]$p02_01$aoi2, list2_check["p02_01"]$p02_01$RIGHT_IA_2_SAMPLE_COUNT)
+setequal(list2["p02_01"]$p02_01$aoi3, list2_check["p02_01"]$p02_01$RIGHT_IA_3_SAMPLE_COUNT)
+setequal(list2["p02_01"]$p02_01$aoi4, list2_check["p02_01"]$p02_01$RIGHT_IA_4_SAMPLE_COUNT)
+
+#participant 2 02 
+setequal(list2["p02_02"]$p02_02$aoi1, list2_check["p02_02"]$p02_02$RIGHT_IA_1_SAMPLE_COUNT)
+setequal(list2["p02_02"]$p02_02$aoi2, list2_check["p02_02"]$p02_02$RIGHT_IA_2_SAMPLE_COUNT)
+setequal(list2["p02_02"]$p02_02$aoi3, list2_check["p02_02"]$p02_02$RIGHT_IA_3_SAMPLE_COUNT)
+setequal(list2["p02_02"]$p02_02$aoi4, list2_check["p02_02"]$p02_02$RIGHT_IA_4_SAMPLE_COUNT)
+
+#participant 13 01 
+setequal(list2["p13_01"]$p13_01$aoi1, list2_check["p13_01"]$p13_01$RIGHT_IA_1_SAMPLE_COUNT)
+setequal(list2["p13_01"]$p13_01$aoi2, list2_check["p13_01"]$p13_01$RIGHT_IA_2_SAMPLE_COUNT)
+setequal(list2["p13_01"]$p13_01$aoi3, list2_check["p13_01"]$p13_01$RIGHT_IA_3_SAMPLE_COUNT)
+setequal(list2["p13_01"]$p13_01$aoi4, list2_check["p13_01"]$p13_01$RIGHT_IA_4_SAMPLE_COUNT)
+
+#participant 17 01
+setequal(list2["p17_01"]$p17_01$aoi1, list2_check["p17_01"]$p17_01$RIGHT_IA_1_SAMPLE_COUNT)
+setequal(list2["p17_01"]$p17_01$aoi2, list2_check["p17_01"]$p17_01$RIGHT_IA_2_SAMPLE_COUNT)
+setequal(list2["p17_01"]$p17_01$aoi3, list2_check["p17_01"]$p17_01$RIGHT_IA_3_SAMPLE_COUNT)
+setequal(list2["p17_01"]$p17_01$aoi4, list2_check["p17_01"]$p17_01$RIGHT_IA_4_SAMPLE_COUNT)
+```
+
+#### Following schmit et al, change all values below 5ms to 0 and above to 10 (pg 14, table expalnation.
+
+```{r}
+list3_check = list2
+list3 = list2 %>%
+  map(~mutate(., aoi1 = ifelse(aoi1 > 5, 10, 0))) %>%
+  map(~mutate(., aoi2 = ifelse(aoi2 > 5, 10, 0))) %>%
+  map(~mutate(., aoi3 = ifelse(aoi3 > 5, 10, 0))) %>%
+  map(~mutate(., aoi4 = ifelse(aoi4 > 5, 10, 0)))
+```
+
+#### create a variable that shows us where the participant was looking based on numerical values.
+
+-   logic, if aoi\# is greater than zero, the participant is fixating on
+    it. One aoi value for each time point in ms.
+
+```{r}
+list4_check = list3
+list4 = list3 %>%
+  map(~mutate(., aoi_all = ifelse(aoi1 > 0, 1, #if aoi1 is greater than 0, label aoi_all 1, if not check below
+                     ifelse(aoi2 > 0, 2, #if aoi2 is greater than 0, label 2 etc
+                            ifelse(aoi3 > 0, 3,
+                                   ifelse(aoi4 > 0, 4, 0)))))) 
+```
+
+#### Fill 0 values with the next number observed in the aoi_all variable
+
+```{r}
+list4 = list4 %>%
+  map(~mutate(.,  na_if(aoi_all, 0)) %>% 
+  fill(aoi_all, .direction = "up"))
+```
+
+#### Oversimplification of analysis
+- includes data where participant may glance over at researcher, the clock, door etc. 
+- point is to only capture NA values where participant is in saccaade etc. 
+
+#### the next step is to create a single column that shows what the participant is looking at by cominging the
+
+-   logic: compare where the participant is looking at with variable
+    aoi_all to the location of each interest area. \*note, some
+    participants did not have an distractor/target location so I had to
+    create this variable based on the sum of the values of the other 3
+    location types. -eg. there are 4 possible locations, therefore the
+    sum of the known three can be used to find the location of the
+    other. Consider the locations below. $$s1+u2+p3 = 6$$ therefore, c =
+    4 Repeat for all other locations $$s1 + u3 + p4 = 8$$ therefore, c =
+    2 $$ s2 + u3 + p4 = 9$$ therefore, c = 1
+
+```{r}
+list4$p02_01$target_location = ifelse(list4$p02_01$semantic_location + list4$p02_01$phonemic_location + list4$p02_01$unrelated_location == 6, 4,
+                                      ifelse(list4$p02_01$semantic_location + list4$p02_01$phonemic_location + list4$p02_01$unrelated_location == 8, 2, 1))
+```
+
+#### same logic for targep10_1, who is missing unrelated location
+
+```{r}
+list4$p10_1$unrelated_location = ifelse(list4$p10_1$semantic_location + list4$p10_1$phonemic_location + list4$p10_1$target_location == 6, 4,
+                                      ifelse(list4$p10_1$semantic_location + list4$p10_1$phonemic_location + list4$p10_1$target_location == 8, 2, 1))
+
+```
+
+"target_location" variable. Therefore, using the last ifelse statement
+to label if participant is looking at target location. Only label y_5 =
+1, if no other condition is met.
+
+```{r}
+
+#create single column showing what aoi participant was looking at
+list4 = list4 %>%
+  map(~mutate(., y_5 = ifelse(aoi_all == unrelated_location, 4,
+                 ifelse(aoi_all == phonemic_location, 3,
+                        ifelse(aoi_all == semantic_location, 2, 1)))))
+```
+
+#### combine data for people with right eye fixation
+
+```{r}
+#first create  dummy variables for session number,  eye, participant #
+#session number 
+list4$p02_01$Session = rep(1)
+list4$p02_02$Session = rep(2)
+list4$p10_1$Session = rep(1)
+list4$p10_2$Session = rep(2)
+list4$p11_1$Session = rep(1)
+list4$p13_02$Session = rep(2)
+list4$p17_01$Session = rep(1)
+list4$p17_02$Session = rep(2)
+
+#eye
+list4$p02_01$eye = rep(1)
+list4$p02_02$eye = rep(1)
+list4$p10_1$eye = rep(1)
+list4$p10_2$eye = rep(1)
+list4$p11_1$eye = rep(1)
+list4$p13_02$eye = rep(1)
+list4$p17_01$eye = rep(1)
+list4$p17_02$eye = rep(1)
+
+#particpant number
+list4$p02_01$id =rep(02)
+list4$p02_02$id =rep(02)
+list4$p10_1$id =rep(10)
+list4$p10_2$id =rep(10)
+list4$p11_1$id =rep(11)
+list4$p13_02$id =rep(13)
+list4$p17_01$id =rep(17)
+list4$p17_02$id =rep(17)
+```
+
+#### clean up targetword variable for anyone that doesnt have it
+
+```{r}
+
+list4$p10_1$targetword = list4$p10_1$target
+```
+
+```{r}
+data_re = list4 %>%
+  map(~mutate(., Target_actual = gsub("_.*","",target))) %>%
+  map(~select(., TRIAL_INDEX, BIN_START_TIME, Target_actual, y_5, Session, eye, id)) %>%
+  list.rbind()
+```
+
+#### OMG return back to left eye.
+
+```{r}
+df2 = p11_2 %>%
+  rename(aoi1 = LEFT_IA_1_SAMPLE_COUNT) %>%
+  rename(aoi2 = LEFT_IA_2_SAMPLE_COUNT) %>%
+  rename(aoi3 = LEFT_IA_3_SAMPLE_COUNT) %>%
+  rename(aoi4 = LEFT_IA_4_SAMPLE_COUNT)
+
+#Following schmit et al, change all values below 5ms to 0 and above to 10 (pg 14, table expalnation.
+df2$aoi1 = ifelse(df2$aoi1 < 5, 10, 0)
+df2$aoi2 = ifelse(df2$aoi2 < 5, 10, 0)
+df2$aoi3 = ifelse(df2$aoi3 < 5, 10, 0)
+df2$aoi4 = ifelse(df2$aoi4  < 5, 10, 0)
+
+#create single column showing what aoi participant was looking at
+df2$aoi_all = ifelse(df2$aoi1 > 0, 1,
+                     ifelse(df2$aoi2 > 0, 2, 
+                            ifelse(df2$aoi3 > 0, 3,
+                                   ifelse(df2$aoi4 > 0,4, 0))))
+
+df2$y_5 = ifelse(df2$aoi_all == df2$unrelated_location, 2,
+                 ifelse(df2$aoi_all == df2$phonemic_location, 4,
+                        ifelse(df2$aoi_all == df2$semantic_location, 3,
+                               ifelse(df2$aoi_all == df2$target_location, 1, 0)))) 
+# yy.list is the hierachical structure of available steps in the tree model. 
+
+df2 = df2 %>%
+  mutate(y =  na_if(y_5, 0)) %>% 
+  fill(y, .direction = "up")
+
+df2.5 = data.frame(  
+  TRIAL_INDEX = df2$TRIAL_INDEX,
+  BIN_START_TIME = df2$BIN_START_TIME,
+  Target_actual = df2$targetword,
+  y_5 = df2$y_5,
+  Session = rep(2),
+  eye = rep(2),
+  id = rep(11)
+)
+```
+
+#### Combine left and right eyes
+
+```{r}
+df3 = rbind(df2.5, data_re) %>% 
+  rename(y =y_5)
+df3_check = df3
+```
+
+#### Triplicate data for x3 nodes
+
+```{r}
+number.of.nodes <- 3
+for (node in 1:number.of.nodes){
+  data.copy <- df3
+  data.copy$node <- rep(node, nrow(df3))
+  if (node==1){data.node <- data.copy} else {data.node <- rbind(data.node,data.copy)}
+}
+```
+
+```{r}
+data.node$yy = ifelse(data.node$node== 1 & data.node$y < 4, 1,  #node 1 and correct (sem, phonological, correct) 
+                      ifelse(data.node$node== 1 & data.node$y == 4, 0, #node 1 and unrelated distractor
+                             ifelse(data.node$node== 2 & data.node$y == 4, NA, #node 2 and unrelated comp
+                             ifelse(data.node$node== 2 & data.node$y == 3, 0, #node 2 and phonological comp
+                             ifelse(data.node$node== 2 & data.node$y < 3, 1,  #node 2 and semantic or target
+                             ifelse(data.node$node== 3 & data.node$y > 2, NA, #node 3 and y = phonological or unrelated competitor
+                             ifelse(data.node$node== 3 & data.node$y == 2, 0, 1 #node 3 and semantic competitor, if not unrelated then correct
+                             )))))))
+unique(data.node$yy)
+
+```
+
+```{r}
+if (length(which(data.node$node==2 & data.node$y==4))>0){
+  data.node <- data.node[-which(data.node$node==2 & data.node$y==4),]
+}
+#Remove y = 3 or 4 for node 3
+if (length(which(data.node$node==3 & data.node$y>2.1))>0){
+  data.node <- data.node[-which(data.node$node==3 & data.node$y>2.1),]
+}
+
+#Test, node 2 has no y = 4, true
+test_node_2 = data.node %>%
+  filter(node == 2) %>%
+  filter(y ==4)
+nrow(test_node_2)
+#Test, node 3 has no y = 3 or 4, true
+test_node_3 = data.node %>%
+  filter(node == 3) %>%
+  filter(y > 2.1)
+nrow(test_node_3)
+```
+
+#### Create variables node.1, node.2, and node.3
+
+-   node.1: if the participant is looking at unrelated comp 0,
+    anything else 1.
+-   node.2 At node 2, if the participant is looking at phonlogical 0,
+    anything else (note unrelated no longer in dataset for node = 2)
+    -node.3 At node 3, if the participant is looking at unrelated 0, and
+    correct = 1 (note phonological and semantic competitors no longer in
+    dataset for node = 2)
+
+```{r}
+#At node 1, if the participant is looking at unrelated comeptitor 0 anything else down the tree, 1
+data.node$node.1 = ifelse(data.node$y == 4, 0, 1)
+#At node 2, if the participant is looking at phonological, 0 anything else 1
+data.node$node.2 = ifelse(data.node$y == 3, 0, 1)
+#At node 3, if the participant is looking at correct, 1 semantic 0
+data.node$node.3 = ifelse(data.node$y == 2, 0, 1)
+```
+
+#### Create variable t and c
+
+-t: Whether the person is looking at the target. t=1 if y=1, and t=0
+otherwise. -c: Whether the person is looking at the competitor. c=1 if
+y=2, and c=0 otherwise.
+
+```{r}
+node1_df = data.node %>%
+  filter(node == 1) %>%
+  rename(item = Target_actual) %>%
+  mutate(t = ifelse(y == 1, 1,0)) %>%
+  mutate(c = ifelse(y !=1,1,0))
+
+node2_df = data.node %>%
+  filter(node == 2) %>%
+  rename(item = Target_actual) %>%
+  mutate(t = ifelse(y == 1, 1,0)) %>%
+  mutate(c = ifelse(y !=1,1,0))
+
+node3_df = data.node %>%
+  filter(node == 3)%>%
+  rename(item = Target_actual) %>%
+  mutate(t = ifelse(y == 1, 1,0)) %>%
+  mutate(c = ifelse(y !=1,1,0))
+
+data.node = rbind(node1_df, node2_df, node3_df)
+
+#SANITY CHECK: ARE THERE NOW 3 NODES AGAIN?
+unique(data.node$node)
+```
+
+#### Create lag variables: t.lag, c.lag, yy.lag
+
+-   t.lag: The value of t at the previous time point. Undefined for the
+    first time point.
+-   c.lag: The value of c at the previous time point. Undefined for the
+    first time point.
+-   yy.lag: The value of yy at the previous time point. Undefined for
+    the first time point.
+
+```{r}
+data.node = data.node %>%
+  arrange(node) %>%
+  group_by(node, id, item) %>%
+  mutate(t.lag = lag(t)) %>%
+  mutate(c.lag = lag(c)) %>%
+  mutate(yy.lag = lag(yy))%>%
+  group_by() %>%
+  mutate(time.coded.center = scale(BIN_START_TIME)) %>%
+  filter(!is.na(t.lag)) %>%
+  filter(!is.na(yy.lag))
+
+#SANITY CHECK: Check to make sure t.lag, c.lag, nor yy.lag include NA 
+summary(data.node)
+```
+
+## Declare variable structure for analyses:
+
+```{r}
+# create correct variable structures 
+data.node$yy.lag <- as.numeric(data.node$yy.lag)
+data.node$t.lag <- as.numeric(data.node$t.lag)
+data.node$c.lag <- as.numeric(data.node$c.lag)
+data.node$time.coded <- as.numeric(data.node$BIN_START_TIME)
+data.node$time.coded.centered <- as.numeric(data.node$time.coded.center)
+data.node$item <- as.factor(data.node$item)
+data.node$person <- as.factor(data.node$id)
+data.node$trial <- as.factor(data.node$TRIAL_INDEX)
+data.node$node <- as.factor(data.node$node)
+data.node$node.1 <- as.factor(data.node$node.1)
+data.node$node.2 <- as.factor(data.node$node.2)
+data.node$node.3 <- as.factor(data.node$node.3)
+data.node$obs <- seq(1,nrow(data.node))
+```
+
+```{r}
+write.csv(data.node, "mpt_analysis_data.csv")
+
+```
