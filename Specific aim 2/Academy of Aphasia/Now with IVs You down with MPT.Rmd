@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, warning=FALSE, message=FALSE, include=FALSE}
+#working directory package
+library(here)
+#to load data
+library(readxl)
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+#list manipulation
+library(rlist)
+#Plot tree structure
+library(data.tree)
+#Frequentist multilevel models
+library(lme4)
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(sjPlot)
+library(httr)
+library(stargazer)
+```
+
+```{r, message=FALSE, message=FALSE, include=FALSE}
+#load data
+data = read_csv(here("formatted data", "mpt_analysis_data.csv"))
+ivs = read_csv(here("dr2_IVs.csv"))
+```
+
+```{r}
+# create correct variable structures 
+data$yy.lag <- as.numeric(data$yy.lag)
+data$t.lag <- as.numeric(data$t.lag)
+data$c.lag <- as.numeric(data$c.lag)
+data$item <- as.factor(data$item)
+data$person <- as.factor(data$id)
+data$trial <- as.factor(data$TRIAL_INDEX)
+data$node <- as.factor(data$node)
+data$node.1 <- as.factor(data$node.1)
+data$node.2 <- as.factor(data$node.2)
+data$node.3 <- as.factor(data$node.3)
+data$obs <- seq(1,nrow(data))
+
+data = data %>%
+  group_by(person, item) %>%
+  mutate(time = row_number())
+
+
+```
+
+
+```{r}
+data = data %>%
+  group_by(person, item) %>%
+  mutate(trial_re = row_number()) %>%
+  ungroup() %>%
+  mutate(obs = seq(1, nrow(data), 1))
+```
+
+#Create aggregate variables and add to formatted data set
+```{r}
+ivs$sem = (ivs$ppt + ivs$aud_syn + ivs$aud_rhyme)/3
+ivs$phon = (ivs$aud_rhyme + ivs$written_rhyme + ivs$Nonword_rep)/3
+```
+
+#Fix stupid naming convention bymyself
+```{r}
+data = data %>% 
+  mutate(ifelse(person == "1", "3086_01",
+         ifelse(person == "2", "3086_02",
+                 ifelse(person == "10", "3086_10",
+                        ifelse(person == "13", "3086_13",
+                               ifelse(person == "17", "3086_17",
+                                      ifelse(person == "18", "3086_17",
+                                             ifelse(person == "11", "3086, 11", "3086_12"))))))))
+```
+
+#Add phon and sem vars
+
+```{r}
+data = data %>% 
+  mutate(sem = ifelse(person = ivs$person, ivs$sem, -999)) %>%
+  mutate(phon = ifelse(person = ivs$person, ivs$phon, -999))
+           
+```

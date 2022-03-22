@@ -5,7 +5,7 @@ date: "3/1/2022"
 output: html_document
 ---
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, include=FALSE}
 #working directory package
 library(here)
 #to load data
@@ -23,11 +23,14 @@ library(lme4)
 library(brms)
 #pretty plots
 library(sjPlot)
+library(httr)
+library(stargazer)
 ```
 
-```{r, message=FALSE}
+```{r, message=FALSE, message=FALSE, include=FALSE}
 #load data
 data = read_csv(here("formatted data", "mpt_analysis_data.csv"))
+ivs = read_csv(here("dr2_centered_IVs.csv"))
 ```
 
 ```{r}
@@ -43,13 +46,14 @@ data$node.1 <- as.factor(data$node.1)
 data$node.2 <- as.factor(data$node.2)
 data$node.3 <- as.factor(data$node.3)
 data$obs <- seq(1,nrow(data))
-```
 
-```{r}
 data = data %>%
   group_by(person, item) %>%
   mutate(time = row_number())
+
+
 ```
+
 
 ```{r}
 data = data %>%
@@ -61,64 +65,179 @@ data = data %>%
 
 ### Model fitting, starting small. Unidimensional model with fixed node.
 
-$$ n_{tljir} = \gamma_1 + y^{*'}_{(t-1)ljir^\gamma} + time^{'}_{tljir^\zeta} + \delta_{lji} + \theta_j + \beta_i $$
-$$ \gamma_1 = intercept \\
+$$ n_{tljir} = \gamma_1 + y^{*'}_{(t-1)ljir^\gamma} + time^{'}_{tljir^\zeta} + \delta_{lji} + \theta_j + \beta_i $$ $$ \gamma_1 = intercept \\
  time^{'}_{tljir^\zeta} = \: fixed \: trend \: effect \: (time_{(1,2...n)}) \\
   y^{*'}_{(t-1)ljir^\gamma} = lag_{t-1}: target: 1, other: 0 \\
  \delta_{lji} = trial\:level \: random \: effect \\
  \theta_j = random \: person \: effect \\
  \theta_j = random \: item \: effect
  $$
-``` {r}
+
+\#\#\# loading model output
+
+```{r}
 data_uni_node1 = data %>% 
   filter(node == 1)
+# 
+# Node1mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+#                data = data_uni_node1,
+#                prior = c(prior(normal(0, 2.5), class = Intercept),
+#                          prior(normal(0, 10), class = b)), #prior on betas
+#                  chains = 4,
+#                  cores = 4,
+#                  family = binomial)
 
-Node1mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
-               data = data_uni_node1,
-               prior = c(prior(normal(0, 2.5), class = Intercept),
-                         prior(normal(0, 10), class = b)), #prior on betas
-                 chains = 4,
-                 cores = 4, 
-                 family = binomial)
-save(Node1mod, file = "fit1.rda")
+
+#save(Node1mod, file = "fit1.rda")
+
+node1mod = load("fit1.rda")
+
 ```
+
+#Assess model convergence
+```{r}
+plot(Node1mod)
+```
+
+#Posterior predictive check Node1model
+
+```{r}
+pp_node1m1 = pp_check(Node1mod, ndraws = 1000)
+pp_node1m1
+```
+
+```{r}
+summary(Node1mod)
+
+mod_sum = summary(Node1mod)
+mod_fixed =mod_sum$fixed
+mod_ran = rbind(mod_sum$random$item, mod_sum$random$person)
+row.names(mod_ran) = c("RE: Intercept", "RE:Person")
+
+mod_out = rbind(mod_fixed, mod_ran)
+
+stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 1: Node 1 with IV t.lag")
+
+```
+
+
 
 ```{r}
 data_uni_node2 = data %>% 
   filter(node == 2)
 
-Node2mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
-               data = data_uni_node2,
-               prior = c(prior(normal(0, 2.5), class = Intercept),
-                         prior(normal(0, 10), class = b)), #prior on betas
-                 chains = 4,
-                 cores = 4, 
-                 family = binomial)
-save(Node2mod, file = "node2_fit.rda")
+# Node2mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+#                data = data_uni_node2,
+#                prior = c(prior(normal(0, 2.5), class = Intercept),
+#                          prior(normal(0, 10), class = b)), #prior on betas
+#                  chains = 4,
+#                  cores = 4, 
+#                  family = binomial)
+# save(Node2mod, file = "node2_fit.rda")
 
+load("node2_fit.rda")
+```
+
+#Assess model convergence
+```{r}
+plot(Node2mod)
+```
+
+#Posterior predictive check Node1model
+
+```{r}
+pp_node2 = pp_check(Node2mod, ndraws = 1000)
+pp_node2
+```
+
+#Model 2 results:
+```{r}
+mod_sum = summary(Node2mod)
+mod_fixed = mod_sum$fixed
+mod_ran = rbind(mod_sum$random$item, mod_sum$random$person)
+row.names(mod_ran) = c("RE: Intercept", "RE:Person")
+mod_out = rbind(mod_fixed, mod_ran)
+
+stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 1: Node 2 with IV t.lag")
+```
+
+```{r}
 data_uni_node3 = data %>% 
   filter(node == 3)
 
-Node3mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
-               data = data_uni_node3,
-               prior = c(prior(normal(0, 2.5), class = Intercept),
-                         prior(normal(0, 10), class = b)), #prior on betas
-                 chains = 4,
-                 cores = 4, 
-                 family = binomial)
-save(Node3mod, file = "node3_fit.rda")
- ```
- 
- 
- ### fit 
-```{r}
- brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
-               data = data_uni_node1,
-               prior = c(prior(normal(0, 2.5), class = Intercept),
-                         prior(normal(0, 10), class = b)), #prior on betas
-                 chains = 4,
-                 cores = 4, 
-                 family = binomial)
-save(Node1mod, file = "fit1.rda")
- 
+# Node3mod = brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+#                data = data_uni_node3,
+#                prior = c(prior(normal(0, 2.5), class = Intercept),
+#                          prior(normal(0, 10), class = b)), #prior on betas
+#                  chains = 4,
+#                  cores = 4, 
+#                  family = binomial)
+# save(Node3mod, file = "node3_fit.rda")
+load("node3_fit.rda")
 ```
+
+#Assess model convergence
+```{r}
+plot(Node3mod)
+```
+
+#Posterior predictive check Node3model
+
+```{r}
+pp_node2 = pp_check(Node2mod, ndraws = 1000)
+pp_node2
+```
+
+#Model 2 results:
+```{r}
+mod_sum = summary(Node3mod)
+mod_fixed = mod_sum$fixed
+
+
+mod_ran = rbind(mod_sum$random$item, mod_sum$random$person)
+row.names(mod_ran) = c("RE: Intercept", "RE:Person")
+
+mod_out = data.frame(rbind(mod_fixed, mod_ran))
+
+stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 3: Node 3 with IV t.lag")
+
+```
+
+```{r}
+ # brm(yy ~ 1 + time + t.lag +  (1|item) + (1|person) + (1|trial),
+ #               data = data_uni_node1,
+ #               prior = c(prior(normal(0, 2.5), class = Intercept),
+ #                         prior(normal(0, 10), class = b)), #prior on betas
+ #                 chains = 4,
+ #                 cores = 4, 
+ #                 family = binomial)
+
+load("all_nodes_nodebytime_nodebyt.lag.rda")
+```
+
+
+
+#Assess model convergence
+```{r}
+plot(Model4)
+```
+
+#Posterior predictive check Node3model
+
+```{r}
+pp_check(Model4, ndraws = 1000)
+
+```
+
+```{r}
+mod_sum = summary(Model4)
+mod_fixed = mod_sum$fixed
+
+mod_ran = rbind(mod_sum$random$item, mod_sum$random$person)
+row.names(mod_ran) = c("RE: Intercept", "RE:Person")
+
+mod_out = data.frame(rbind(mod_fixed, mod_ran))
+
+stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 3: Multilevel model with t.lag and c.lag")
+```
+

@@ -1,7 +1,7 @@
 ---
-title: "PCA and such"
+title: "Data aggregation investigation"
 author: "AMS"
-date: "3/20/2022"
+date: "3/22/2022"
 output: html_document
 ---
 
@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 library(readr)
 #working directory package
 library(here)
@@ -29,6 +29,10 @@ library(brms)
 #pretty plots
 library(sjPlot)
 library(stargazer)
+library(factoextra)
+###necessary for downlaoding and install factoextra, nice package for plotting and summarizing opca
+#if(!require(devtools)) install.packages("devtools")
+#devtools::install_github("kassambara/factoextra")
 
 ```
 
@@ -49,7 +53,7 @@ data = data %>%
 summary(data$palpa49_audsyn_hi)
 ```
 
-### s
+
 
 ```{r}
 #create data set for pca
@@ -63,9 +67,9 @@ data2 = data.frame(
   aud_syn_OA = data$palpa49_audsyn_overall,
   written_syn = data$palpa_50_written_synonym_overall,
   CAT = data$pre_mean,
-  participant = seq(1:nrow(data2)))
+  participant = as.factor(seq(1:nrow(data))))
 
-stargazer(data.frame(data2), type = "text", title = "DR1 Sample")
+stargazer(data.frame(data2), type = "text", title = "Table 1: DR1 Sample", digits = 2, align = TRUE)
 
 
 dr2namechange = data.frame(ppt = dr2$ppt/52,
@@ -77,11 +81,11 @@ dr2namechange = data.frame(ppt = dr2$ppt/52,
                            participant = dr2$participant)
 
 
-stargazer(data.frame(dr2namechange), type = "text", title = "DR2 Sample")
+stargazer(data.frame(dr2namechange), type = "text", title = "Table 2: DR2 Sample", digits = 2, align = TRUE)
 
 pcadata = rbind(data2, dr2namechange)
 
-stargazer(data.frame(pcadata), type = "text", title = "DR1&2 Sample")
+stargazer(data.frame(pcadata), type = "text", title = "Table 3: DR1&2 Sample", digits = 2, align = TRUE)
 #following suggestions from gary dell, take square root of s and p for analysis.
 # data3 = data2 %>%
 #   #mutate(sweight_sqr =  sqrt(sweight)) %>%
@@ -93,34 +97,36 @@ stargazer(data.frame(pcadata), type = "text", title = "DR1&2 Sample")
 ## correlation matrix
 
 ```{r}
-correlation = cor(pcadata)
-stargazer(correlation, type = "text", Title = "Correlation matrix of raw variables")
+correlation = round(cor(pcadata[,1:6]),2)
+stargazer(correlation, summary = FALSE, type = "text", title = "Table 4: DR1 and 2 correlation matrix", align = TRUE, digits = 2)
 ```
+
+#Formating data for PCA - Need to create equal variance, mean centering
 
 ```{r}
 #df_center = data.frame(sapply(pcadata, function(x) scale(x, scale = FALSE)))
-df_center = data.frame(ppt_cen = scale(pcadata$ppt, scale = FALSE ),
-                       aud_rhyme = scale(pcadata$aud_rhyme_OA, scale = FALSE),
-                       written_rhyme = scale(pcadata$written_rhyme_OA, scale = FALSE),
-                       aud_syn = scale(pcadata$aud_syn_OA, scale = FALSE),
-                       written_syn = scale(pcadata$written_syn, scale = FALSE)
+df_center = data.frame(ppt = scale(pcadata$ppt, scale = TRUE ),
+                       aud_rhyme = scale(pcadata$aud_rhyme_OA, scale = TRUE),
+                       written_rhyme = scale(pcadata$written_rhyme_OA, scale = TRUE),
+                       aud_syn = scale(pcadata$aud_syn_OA, scale = TRUE),
+                       written_syn = scale(pcadata$written_syn, scale = TRUE)
                        )
 
-stargazer(data.frame(pcadata), type = "text", title = "Raw variables*")
-stargazer(data.frame(df_center), type = "text", title = "Mean Centered Variables")
+stargazer(data.frame(pcadata), type = "text", title = "Table 5: Raw variables (should have unequal variances)")
+stargazer(data.frame(df_center), type = "text", title = "Table 6: Mean Centered Variables (should have equal variance)")
 ```
 
-### z score
+### Check distributions
 
 ```{r}
 #inspect distributions
 
 df_center %>%
   mutate(Participant = seq(1: nrow(df_center))) %>%
-  gather(Assessment, Estimate, ppt:CAT) %>%
+  gather(Assessment, Estimate, ppt:written_syn) %>%
   ggplot(aes(x = Estimate)) +
   geom_histogram(color = "steelblue", size = 1, bins = 20) +
-  labs(title = "Distribution of Dose Response 1 variables") +
+  labs(title = "Figure 2: Distribution of Dose Response 1 and 2 variables mean centered and z-scored") +
   facet_wrap(~ Assessment)
 ```
 
@@ -130,48 +136,6 @@ df_center %>%
 
 -   not using for now, but do you want to include any assessments from the CAT?
 
-```{r}
-
-# data3 = data2 %>%
-#   mutate(cat_comp_spoken = scale(pre_entry_comp_spoken)) %>%
-#   mutate(cat_comp_written = scale(pre_entry_comp_written)) %>%
-#   mutate(cat_rep = scale(pre_entry_rep)) %>%
-#   mutate(cat_naming = scale(pre_entry_name)) %>%
-#   mutate(cat_read = scale(pre_entry_read)) %>%
-#   mutate(cat_write = scale(pre_entry_write)) %>%
-#   select(c(-pre_entry_comp_spoken, -pre_entry_comp_written, -pre_entry_rep, -pre_entry_name, -pre_entry_read, -pre_entry_write))
-# 
-# data4 = t(data3)
-# 
-# write.csv(data3, 'pcadat_3.csv')
-```
-
-### Quick check:
-
--   not using now, quick checks for CAT scaling.
-
-<!-- -->
-
--   ncols = ncols in data2 and data3
-
-    ```{# {r}
-    # ncol(data2) 
-    # ncol(data3)
-    ```
-
--   \$ catcomp\_{data2} \neq catcompespoken\_{data3} \$
-
-    ```{# {r}
-    # identical(data2$pre_entry_comp_spoken, data3$cat_comp_spoken)
-    ```
-
--   $p = corr(x,y) = 1.0$
-
-```{# {r}
-# cor(data2$pre_entry_comp_spoken, data3$cat_comp_spoken)
-```
-
-\#\#\#visual data in heat map
 
 ```{r}
 #correlation matrix
@@ -208,36 +172,104 @@ ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
     name="Pearson\nCorrelation") +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, 
     size = 12, hjust = 1)) +
-  geom_text(aes(Var2, Var1, label = value), color = "black", size =4) 
+  geom_text(aes(Var2, Var1, label = value), color = "black", size =4)  +
+  ggtitle("Figure 3: DR 1 and 2 IVs, mean centered and z-scored")
 # Print the heatmap
 print(ggheatmap)
-
 ```
 
 ### correlations across variables are obviously present, assessing ability to use pca to create aggregate variables. Correlations amongst phonological variables are not obvious.
 
 ```{r}
-covm = cov.wt(df_center)
-pca_out = princomp(~ppt+aud_rhyme_OA+written_rhyme_OA + aud_syn_OA + written_syn + CAT, data = df_center, scores = T)
+#covmatrix = cov.wt(df_center)
+#cm = data.frame(covmatrix$cov)
+#pca_out = princomp(~ ppt + aud_rhyme + written_rhyme + aud_syn + written_syn, covmatrix  = cm, scores = T)
+```
+#Create df_center with all variables from dr2
+```{r}
+dr2_vars = data.frame(ppt = dr2$ppt/52,
+                           aud_rhyme_OA = dr2$palpa15_aud_rhyme / 60,
+                           written_rhyme_OA = dr2$palpa15_written_rhyme / 60,
+                           aud_syn_OA = dr2$palpa49_aud_syn / 60, 
+                           written_syn = dr2$palpa50_written_syn/60,
+                           CAT = dr2$cat_mmt_1,
+                           Nonword_rep = dr2$palpa8_nwor/30,
+                           participant = dr2$participant)
+
+dr2_center = data.frame(ppt = scale(dr2_vars$ppt, scale = TRUE ),
+                       aud_rhyme = scale(dr2_vars$aud_rhyme_OA, scale = TRUE),
+                       written_rhyme = scale(dr2_vars$written_rhyme_OA, scale = TRUE),
+                       aud_syn = scale(dr2_vars$aud_syn_OA, scale = TRUE),
+                       written_syn = scale(dr2_vars$written_syn, scale = TRUE),
+                       CAT = scale(dr2_vars$CAT, scale = TRUE),
+                       Nonword_rep = scale(dr2_vars$Nonword_rep, scale = TRUE),
+                       Participant = dr2_vars$participant)
+
+write.csv(dr2_center, "dr2_IVs.csv")
+stargazer(data.frame(dr2_center), type = "text", title = "Table 6: DR2 all vars, mean centered and z-scaled", summary = FALSE, digits = 2, align = TRUE, rownames = TRUE)
+
+#correlation matrix
+cormat = round(cor(dr2_center[,1:7]), 2)
+#rearrange data for heatmap looks like a 3 column correlation matrix
+melted_cormat <- melt(cormat)
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+  }
+upper_tri <- get_upper_tri(cormat)
+upper_tri
+# Melt the correlation matrix
+library(reshape2)
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1)) +
+  geom_text(aes(Var2, Var1, label = value), color = "black", size =4) +
+  ggtitle("DR2 IVs mean centered and z-scored")
+# Print the heatmap
+print(ggheatmap)
+
+write_csv(dr2_center, "dr2_center_DVs.csv")
 ```
 
-### 
 
-```{r, include=FALSE}
-#if(!require(devtools)) install.packages("devtools")
-#devtools::install_github("kassambara/factoextra")
-library(factoextra)
+
+
+
+### PCA results are weird, not going to try and interpret righ tnow. Recommend repeating once palpa 8 has been added to dataset
+
+```{r}
+#summary(pca_out)
 ```
 
 ```{r}
-summary(pca_out)
+#pca_out$center
 ```
 
 ```{r}
-loadings(pca_out)
+#screeplot(pca_out)
 ```
 
+
+### Packages:
 ```{r}
-screeplot(pca_out
-          
-```
+installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
+``` 
