@@ -1,0 +1,243 @@
+---
+title: "PCA and such"
+author: "AMS"
+date: "3/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+#working directory package
+library(here)
+#to load data
+library(readxl)
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+library(janitor)
+library(reshape2)
+#Plot tree structure
+library(data.tree)
+#Frequentist multilevel models
+library(lme4)
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(sjPlot)
+library(stargazer)
+
+```
+
+```{r, include=FALSE}
+#load data
+here()
+dr1 = read_csv(here("DR1PCADATA.csv"))
+dr2 = read_excel(here("VWP_PreTx_assessments.xlsx"))
+data = clean_names(dr1)
+```
+
+### fix palpa 49 outlier, assuming it is a typo
+
+```{r}
+data = data %>%
+  mutate(ifelse(palpa49_audsyn_hi == 96.6700, 0.96700, palpa49_audsyn_hi))
+
+summary(data$palpa49_audsyn_hi)
+```
+
+### s
+
+```{r}
+#create data set for pca
+data2 = data.frame(
+  #sweight = data$s_weight,
+  #pweight = data$p_weight,
+  ppt = data$ppt,
+  #p_nwREP_count = data$palpa8_nword,
+  aud_rhyme_OA = data$palpa15_a_overall,
+  written_rhyme_OA = data$palpa15_w_overall,
+  aud_syn_OA = data$palpa49_audsyn_overall,
+  written_syn = data$palpa_50_written_synonym_overall,
+  CAT = data$pre_mean,
+  participant = seq(1:nrow(data2)))
+
+stargazer(data.frame(data2), type = "text", title = "DR1 Sample")
+
+
+dr2namechange = data.frame(ppt = dr2$ppt/52,
+                           aud_rhyme_OA = dr2$palpa15_aud_rhyme / 60,
+                           written_rhyme_OA = dr2$palpa15_written_rhyme / 60,
+                           aud_syn_OA = dr2$palpa49_aud_syn / 60, 
+                           written_syn = dr2$palpa50_written_syn/60,
+                           CAT = dr2$cat_mmt_1,
+                           participant = dr2$participant)
+
+
+stargazer(data.frame(dr2namechange), type = "text", title = "DR2 Sample")
+
+pcadata = rbind(data2, dr2namechange)
+
+stargazer(data.frame(pcadata), type = "text", title = "DR1&2 Sample")
+#following suggestions from gary dell, take square root of s and p for analysis.
+# data3 = data2 %>%
+#   #mutate(sweight_sqr =  sqrt(sweight)) %>%
+#   #mutate(pweight_sqr = sqrt(pweight)) %>%
+#   #remove old estimates of s and p
+#     select(c(-sweight, -pweight)) 
+```
+
+## correlation matrix
+
+```{r}
+correlation = cor(pcadata)
+stargazer(correlation, type = "text", Title = "Correlation matrix of raw variables")
+```
+
+```{r}
+#df_center = data.frame(sapply(pcadata, function(x) scale(x, scale = FALSE)))
+df_center = data.frame(ppt_cen = scale(pcadata$ppt, scale = FALSE ),
+                       aud_rhyme = scale(pcadata$aud_rhyme_OA, scale = FALSE),
+                       written_rhyme = scale(pcadata$written_rhyme_OA, scale = FALSE),
+                       aud_syn = scale(pcadata$aud_syn_OA, scale = FALSE),
+                       written_syn = scale(pcadata$written_syn, scale = FALSE)
+                       )
+
+stargazer(data.frame(pcadata), type = "text", title = "Raw variables*")
+stargazer(data.frame(df_center), type = "text", title = "Mean Centered Variables")
+```
+
+### z score
+
+```{r}
+#inspect distributions
+
+df_center %>%
+  mutate(Participant = seq(1: nrow(df_center))) %>%
+  gather(Assessment, Estimate, ppt:CAT) %>%
+  ggplot(aes(x = Estimate)) +
+  geom_histogram(color = "steelblue", size = 1, bins = 20) +
+  labs(title = "Distribution of Dose Response 1 variables") +
+  facet_wrap(~ Assessment)
+```
+
+### need to z score to try and take care of these wide rangers of numbers
+
+### Creating df3 to standardize CAT scores and fix annoying naming conventions
+
+-   not using for now, but do you want to include any assessments from the CAT?
+
+```{r}
+
+# data3 = data2 %>%
+#   mutate(cat_comp_spoken = scale(pre_entry_comp_spoken)) %>%
+#   mutate(cat_comp_written = scale(pre_entry_comp_written)) %>%
+#   mutate(cat_rep = scale(pre_entry_rep)) %>%
+#   mutate(cat_naming = scale(pre_entry_name)) %>%
+#   mutate(cat_read = scale(pre_entry_read)) %>%
+#   mutate(cat_write = scale(pre_entry_write)) %>%
+#   select(c(-pre_entry_comp_spoken, -pre_entry_comp_written, -pre_entry_rep, -pre_entry_name, -pre_entry_read, -pre_entry_write))
+# 
+# data4 = t(data3)
+# 
+# write.csv(data3, 'pcadat_3.csv')
+```
+
+### Quick check:
+
+-   not using now, quick checks for CAT scaling.
+
+<!-- -->
+
+-   ncols = ncols in data2 and data3
+
+    ```{# {r}
+    # ncol(data2) 
+    # ncol(data3)
+    ```
+
+-   \$ catcomp\_{data2} \neq catcompespoken\_{data3} \$
+
+    ```{# {r}
+    # identical(data2$pre_entry_comp_spoken, data3$cat_comp_spoken)
+    ```
+
+-   $p = corr(x,y) = 1.0$
+
+```{# {r}
+# cor(data2$pre_entry_comp_spoken, data3$cat_comp_spoken)
+```
+
+\#\#\#visual data in heat map
+
+```{r}
+#correlation matrix
+cormat = round(cor(df_center), 2)
+#rearrange data for heatmap looks like a 3 column correlation matrix
+melted_cormat <- melt(cormat)
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+  }
+upper_tri <- get_upper_tri(cormat)
+upper_tri
+# Melt the correlation matrix
+library(reshape2)
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1)) +
+  geom_text(aes(Var2, Var1, label = value), color = "black", size =4) 
+# Print the heatmap
+print(ggheatmap)
+
+```
+
+### correlations across variables are obviously present, assessing ability to use pca to create aggregate variables. Correlations amongst phonological variables are not obvious.
+
+```{r}
+covm = cov.wt(df_center)
+pca_out = princomp(~ppt+aud_rhyme_OA+written_rhyme_OA + aud_syn_OA + written_syn + CAT, data = df_center, scores = T)
+```
+
+### 
+
+```{r, include=FALSE}
+#if(!require(devtools)) install.packages("devtools")
+#devtools::install_github("kassambara/factoextra")
+library(factoextra)
+```
+
+```{r}
+summary(pca_out)
+```
+
+```{r}
+loadings(pca_out)
+```
+
+```{r}
+screeplot(pca_out
+          
+```
