@@ -1,0 +1,218 @@
+---
+title: "MPT model development"
+output: html_notebook
+---
+
+```{r, include=FALSE}
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(stargazer)
+#intepretation and plotting
+library(tidybayes)
+```
+
+\`\`\`
+
+### Description:
+
+Are gazes at target, phonological, semantic, and unrelated moderated by standardized as measures of lexical-phonological and lexical-semantic processing.
+
+-   All models were run on previous iterations and this markdown loads results only.
+-   After each model, the markdown removes the model to help maintain a tolerable processing speed
+-   Ten models, increasing in complexity from 0-10.
+-   All table output is transformed from logits to probabilities.
+
+## Model 1: Intercept only
+
+$$ yy \sim
+   1 $$
+
+```{r}
+load("m1.rda")
+fixef(m1) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 1: Intercept only model",
+            notes = "yy ~ 1")
+```
+
+```{r}
+rm(m1)
+load("m2.rda")
+```
+
+### Interpretation:
+
+Not going to dwell on this model, good form to start here. Intercept only model predicts yy but predicting the outcome as the mean of variable yy.
+
+## Model 2: Does time, as measured in $binsize = 50$ predict yy when included as the only main effect.
+
+$$
+yy \sim \beta_1 + \beta_2*time
+$$
+
+```{r}
+fixef(m2) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 2: Intercept and time*",
+            notes = "yy ~ 1 + time (Time not centered, size of bin = 50)")
+```
+
+#### Model 2 interpretation:
+
+Regressing a main effect of uncentered time reveals that an the predictive utility of time in the absence of additional predictors is no greater than chance. The time variable is rounded which makes it look like it might be incorrect given all estimates are 0.50. Plotting below to show this is not an error.
+
+#### Time coefficient is very null
+
+```{r}
+plot(m2)
+```
+
+## Model 3: In model three we add a single main effect predictor for the auditory rhyme judgment task and estimate the trend between time and auditory rhyme.
+
+$$
+yy \sim \beta_1 + \beta_2*auditoryRhyme + \beta_3(auditoryRhyme*Time)
+$$
+
+```{r}
+rm(m2)
+load("m3.rda")
+fixef(m3) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 3: Auditory rhyme and time",
+            notes = c("yy ~ 1 + auditoryRhyme + auditoryRhyme:time.coded",
+                      "Time not centered, size of bin = 50",
+                      "aud_rhyme zscored"))
+```
+
+### Model 3 Interpretation:
+
+Time is a fickle beast. Very small, but robust main effect of aud_rhyme such that as the probability of gazing at a distractor increases as participant auditory rhyme increases. Note that we are still collapsed across all node levels right now
+
+## Model 4: Swap auditory synonym judgment with auditory rhyme
+
+$$
+yy \sim \beta_1 + \beta_2*auditorySynonym + \beta_3(auditorySynonym*Time)
+$$
+
+```{r}
+rm(m3)
+load("m4.rda")
+fixef(m4) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 4: Auditory synonym and time",
+            notes = c("yy ~ 1 + auditory synonym + auditory synonym:time.coded)",
+                      "Time not centered, size of bin = 50",
+                      "auditory synonym zscored"))
+```
+
+### Model 4 interpretation:
+
+As participant auditory synonym score increases, the probability of the participant looking at an acceptable target word also increases.
+
+## Model 5: Trend effects with time and auditory synonym and auditory rhyme only.
+
+$$
+yy \sim \beta_1 + \beta_2(auditorySynonym*Time) + \beta_3(auditoryRhyme*Time)
+$$
+
+```{r}
+rm(m4)
+load("m5.rda")
+```
+
+```{r}
+fixef(m5) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 5: Auditory synonym, Auditory Rhyme and time",
+            notes = c("yy ~ 1 + auditory synonym:time.coded + auditory rhyme:time.coded",
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored"))
+rm(m5)
+```
+
+### Model 5 interpretation:
+
+Nothing is very robust here, not going to interpret.
+
+## Model 7 (did i forget about the number 6?, maybe). Adding node and yy.lag to the model, including node as the only main effect following Naveiras and Sun-Joo Cho 2021, tutorial.
+
+$$
+yy \sim \beta_1 + \beta_2*node + \beta_3(auditorySynonym*Node) + \beta_4(auditoryRhyme*Node) + \beta_5(Time*Node)
+$$
+
+```{r}
+load("m7.rda")
+fixef(m7) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 7: Auditory synonym, Auditory Rhyme, yy.lag and time trend with node",
+            notes = c("yy ~ 1 +  yy.lag:node + auditory synonym:time.coded + auditory rhyme:time.coded",
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored",
+                      "- Node: Three level factor",
+                      "- yy.lag: Participant viewing acceptable location at previous bin"))
+```
+
+### Model 7 interpretation:
+
+As expected, yy.lag dominates variance explained in the model and is highly predictive of gazing at an acceptable response.
+
+## Model 8: Add random effects follow Naveiras and Cho
+
+$$
+yy ~ -1 + node + yy.lag:node +audSyn:node + audRhyme:node + 
+$$
+
+$$
+time.coded:node + (-1+node|trial) + 
+(-1+node|item) + (-1+node|person)
+$$
+
+```{r}
+load("m8.rda")
+fixef(m8) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 8: yy.lag, Auditory synonym, Auditory Rhyme and time trend with node and maximal random effect structure",
+            notes = c(
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored",
+                      "- Node: Three level factor"))
+```
+
+## Model 9: Remove yy.lag and only examine predictors of interest.
+
+```{r}
+rm(m8)
+load("m9.rda")
+fixef(m9) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 9:  Auditory synonym, Auditory Rhyme and time trend with node and maximal random effect structure",
+            notes = c(
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored",
+                      "- Node: Three level factor"))
+```

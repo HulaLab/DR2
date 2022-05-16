@@ -63,27 +63,38 @@ data = data %>%
 
 #Create aggregate variables and add to formatted data set
 ```{r}
-ivs$sem = (ivs$ppt + ivs$aud_syn + ivs$aud_rhyme)/3
+ivs$sem = (ivs$ppt + ivs$aud_syn + ivs$written_syn)/3
 ivs$phon = (ivs$aud_rhyme + ivs$written_rhyme + ivs$Nonword_rep)/3
 ```
 
 #Fix stupid naming convention bymyself
 ```{r}
-data = data %>% 
-  mutate(ifelse(person == "1", "3086_01",
+data2 = data %>% 
+  mutate(person = as.character(person)) %>%
+  mutate(person = ifelse(person == "1", "3086_01",
          ifelse(person == "2", "3086_02",
                  ifelse(person == "10", "3086_10",
                         ifelse(person == "13", "3086_13",
                                ifelse(person == "17", "3086_17",
-                                      ifelse(person == "18", "3086_17",
-                                             ifelse(person == "11", "3086, 11", "3086_12"))))))))
+                                      ifelse(person == "18", "3086_18",
+                                             ifelse(person == "11", "3086_11", "3086_12"))))))))
 ```
 
 #Add phon and sem vars
-
 ```{r}
-data = data %>% 
-  mutate(sem = ifelse(person = ivs$person, ivs$sem, -999)) %>%
-  mutate(phon = ifelse(person = ivs$person, ivs$phon, -999))
-           
+#change participan to person in ivs
+ivs2 = ivs %>%
+  rename(person = Participant) 
+ivs3 = ivs2 %>%
+  filter(person != "3086_01") %>%
+  filter(person != "3086_18") %>%
+  filter(person != "3086_12")
+unique(ivs3$person)
+data3 = left_join(data2, ivs3, by = "person") 
+write.csv(data3, "analysisDf.csv")
 ```
+
+
+
+
+

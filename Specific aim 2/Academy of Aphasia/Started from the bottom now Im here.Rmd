@@ -1,0 +1,250 @@
+---
+title: "Started from the bottom now Im here"
+author: "AMS"
+date: "4/25/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+#to manipulate data, dplyr, purr, etc and to plot w ggplot2
+library(tidyverse)
+
+#Bayesian multilevel models
+library(brms)
+#pretty plots
+library(stargazer)
+#intepretation and plotting
+library(tidybayes)
+```
+
+```{r}
+d = read_csv("analysisDf.csv")
+d$node = as.factor(d$node)
+d$time.coded = d$time.coded/50
+```
+
+## Intercept only
+
+```{r}
+# m1 <-
+#   brm(data = d, 
+#       family = bernoulli(),
+#       yy ~ 1,
+#       prior(normal(0, 10), class = Intercept),
+#       seed = 10,
+#       cores = 4)
+
+#save(m1, file = "m1.rda")
+rm(m1)
+load("m1.rda")
+```
+## Output in probabilities
+```{r}
+fixef(m1) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 1: Intercept only model",
+            notes = "yy ~ 1")
+```
+
+## Run time only (length of bin = 50)
+
+```{r}
+m2.1 <- brm(data = d,
+        family = bernoulli(),
+        yy ~ 1 + time.coded,
+        prior = c(prior(normal(0, 10), class = Intercept),
+        prior(normal(0, 10), class = b)),
+        seed = 10,
+        cores = 4)
+
+ #save(m2, file = "m2.rda")
+```
+
+
+```{r}
+## Output in probabilities
+rm(m2)
+load("m2.rda")
+fixef(m2) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 2: Intercept and time*",
+            notes = "yy ~ 1 + time (Time not centered, size of bin = 50)")
+```
+
+### Time coefficient is very null, but the table makes it a 
+```{r}
+plot(m2)
+```
+
+### Add single main effect predictor (Aud rhyme) and main effect and trend with time
+```{r}
+# m3 <- update(m2,
+#              newdata = d,
+#              formula = yy ~ 1 + aud_rhyme + aud_rhyme:time.coded,
+#              cores = 4)
+# save(m3, file = "m3.rda")
+# rm(m3)
+```
+
+```{r}
+load("m3.rda")
+fixef(m3) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 3: Auditory rhyme and time",
+            notes = c("yy ~ 1 + auditory rhyme + auditory rhyme:time.coded)",
+                      "Time not centered, size of bin = 50",
+                      "aud_rhyme zscored"))
+```
+```{r}
+m4 <- update(m2,
+              newdata = d,
+              formula = yy ~ 1 + aud_syn + aud_syn:time.coded,
+              cores = 4)
+save(m4, file = "m4.rda")
+rm(m3)
+rm(m2)
+```
+
+```{r}
+load("m4.rda")
+fixef(m4) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 3: Auditory synonym and time",
+            notes = c("yy ~ 1 + auditory synonym + auditory synonym:time.coded)",
+                      "Time not centered, size of bin = 50",
+                      "audditory synonym zscored"))
+```
+
+```{r}
+m5 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ 1 + aud_syn:time.coded + aud_rhyme:time.coded,
+         prior = c(prior(normal(0, 10), class = Intercept),
+         prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m5, file = "m5.rda")
+rm(m5)
+```
+
+```{r}
+load("m5.rda")
+fixef(m5) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 3: Auditory synonym, Auditory Rhyme and time",
+            notes = c("yy ~ 1 + auditory synonym:time.coded + auditory rhyme:time.coded",
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored"))
+```
+
+```{r}
+m6 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ 1 + node  + aud_syn:node + aud_rhyme:node + time.coded:node,
+         prior = c(prior(normal(0, 10), class = Intercept),
+         prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m7, file = "m7.rda")
+rm(m7)
+```
+
+## Add yy.lag as predictor to no random effect model
+```{r}
+m7 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ 1 + node + yy.lag:node + aud_syn:node + aud_rhyme:node + time.coded:node,
+         prior = c(prior(normal(0, 10), class = Intercept),
+         prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m7, file = "m7.rda")
+rm(m7)
+```
+
+
+
+```{r}
+load("m7.rda")
+fixef(m7) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 7: Auditory synonym, Auditory Rhyme, yy.lag and time trend with node",
+            notes = c("yy ~ 1 +  yy.lag:node + auditory synonym:time.coded + auditory rhyme:time.coded",
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored",
+                      "- Node: Three level factor",
+                      "- yy.lag: Participant viewing acceptable location at previous bin"))
+```
+
+## Add yy.lag as predictor to  random effect model
+```{r}
+m8 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ -1 + node + yy.lag:node +aud_syn:node + aud_rhyme:node + time.coded:node +
+           (-1+node|trial) + (-1+node|item) + (-1+node|person),
+         prior = c(prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m8, file = "m8.rda")
+rm(m8)
+```
+
+
+
+```{r}
+load("m8.rda")
+fixef(m8) %>%
+  round(digits = 2) %>%
+  inv_logit_scaled() %>%
+  stargazer(type = "text",
+            title = "Table 8: Auditory synonym, Auditory Rhyme and time trend with node",
+            notes = c("yy ~ 1 + auditory synonym:time.coded + auditory rhyme:time.coded",
+                      "- Time not centered, size of bin = 50",
+                      "- Auditory synonym z-scored",
+                      "- Auditory rhyme z-scored",
+                      "- Node: Three level factor"))
+```
+```{r}
+m9 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ 1 + node + aud_syn:node + aud_rhyme:node + time.coded:node + (1+node|item) + (1+node|person),
+         prior = c(prior(normal(0, 10), class = Intercept),
+         prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m9, file = "m9.rda")
+summary(m9)
+rm(m9)
+```
+
+
+```{r}
+m10 <-  brm(data = d,
+         family = bernoulli(),
+         yy ~ -1 + node + aud_syn:node + aud_rhyme:node + time.coded:node + (-1+node|item) + (-1+node|person),
+         prior = c(prior(normal(0, 10), class = b)),
+         seed = 10,
+         cores = 4)
+save(m10, file = "m10.rda") 
+summary(m10)
+rm(m10)
+```

@@ -54,7 +54,6 @@ data = data %>%
 
 ```
 
-
 ```{r}
 data = data %>%
   group_by(person, item) %>%
@@ -91,15 +90,24 @@ data_uni_node1 = data %>%
 #save(Node1mod, file = "fit1.rda")
 
 node1mod = load("fit1.rda")
-
 ```
 
-#Assess model convergence
+```{r}
+samples1a <- posterior_samples(Node1mod, "b_") %>%
+  pivot_longer(b_Intercept:b_t.lag) %>%
+  transmute(estimate = inv_logit_scaled(b_intercept + value)) %>%
+  group_by(treatment) %>%
+  tidybayes:mean_qi(mean)
+              
+```
+
+\#Assess model convergence
+
 ```{r}
 plot(Node1mod)
 ```
 
-#Posterior predictive check Node1model
+\#Posterior predictive check Node1model
 
 ```{r}
 pp_node1m1 = pp_check(Node1mod, ndraws = 1000)
@@ -120,8 +128,6 @@ stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 1: Node 1 with
 
 ```
 
-
-
 ```{r}
 data_uni_node2 = data %>% 
   filter(node == 2)
@@ -138,22 +144,32 @@ data_uni_node2 = data %>%
 load("node2_fit.rda")
 ```
 
-#Assess model convergence
+```{r}
+library(bayesplot)
+library(tidybayes)
+
+m2_out = posterior_samples(Node2mod, "b_")
+
+```
+
+\#Assess model convergence
+
 ```{r}
 plot(Node2mod)
 ```
 
-#Posterior predictive check Node1model
+\#Posterior predictive check Node1model
 
 ```{r}
 pp_node2 = pp_check(Node2mod, ndraws = 1000)
 pp_node2
 ```
 
-#Model 2 results:
+\#Model 2 results:
+
 ```{r}
 mod_sum = summary(Node2mod)
-mod_fixed = mod_sum$fixed
+mod_fixed = inv_logit_scaled(mod_sum$fixed)
 mod_ran = rbind(mod_sum$random$item, mod_sum$random$person)
 row.names(mod_ran) = c("RE: Intercept", "RE:Person")
 mod_out = rbind(mod_fixed, mod_ran)
@@ -176,19 +192,21 @@ data_uni_node3 = data %>%
 load("node3_fit.rda")
 ```
 
-#Assess model convergence
+\#Assess model convergence
+
 ```{r}
 plot(Node3mod)
 ```
 
-#Posterior predictive check Node3model
+\#Posterior predictive check Node3model
 
 ```{r}
 pp_node2 = pp_check(Node2mod, ndraws = 1000)
 pp_node2
 ```
 
-#Model 2 results:
+\#Model 2 results:
+
 ```{r}
 mod_sum = summary(Node3mod)
 mod_fixed = mod_sum$fixed
@@ -215,14 +233,13 @@ stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 3: Node 3 with
 load("all_nodes_nodebytime_nodebyt.lag.rda")
 ```
 
+\#Assess model convergence
 
-
-#Assess model convergence
 ```{r}
 plot(Model4)
 ```
 
-#Posterior predictive check Node3model
+\#Posterior predictive check Node3model
 
 ```{r}
 pp_check(Model4, ndraws = 1000)
@@ -240,4 +257,3 @@ mod_out = data.frame(rbind(mod_fixed, mod_ran))
 
 stargazer(mod_out, type = 'text', summary = FALSE, title = "Table 3: Multilevel model with t.lag and c.lag")
 ```
-

@@ -53,8 +53,6 @@ data = data %>%
 summary(data$palpa49_audsyn_hi)
 ```
 
-
-
 ```{r}
 #create data set for pca
 data2 = data.frame(
@@ -101,7 +99,7 @@ correlation = round(cor(pcadata[,1:6]),2)
 stargazer(correlation, summary = FALSE, type = "text", title = "Table 4: DR1 and 2 correlation matrix", align = TRUE, digits = 2)
 ```
 
-#Formating data for PCA - Need to create equal variance, mean centering
+\#Formating data for PCA - Need to create equal variance, mean centering
 
 ```{r}
 #df_center = data.frame(sapply(pcadata, function(x) scale(x, scale = FALSE)))
@@ -135,7 +133,6 @@ df_center %>%
 ### Creating df3 to standardize CAT scores and fix annoying naming conventions
 
 -   not using for now, but do you want to include any assessments from the CAT?
-
 
 ```{r}
 #correlation matrix
@@ -185,7 +182,9 @@ print(ggheatmap)
 #cm = data.frame(covmatrix$cov)
 #pca_out = princomp(~ ppt + aud_rhyme + written_rhyme + aud_syn + written_syn, covmatrix  = cm, scores = T)
 ```
-#Create df_center with all variables from dr2
+
+\#Create df_center with all variables from dr2
+
 ```{r}
 dr2_vars = data.frame(ppt = dr2$ppt/52,
                            aud_rhyme_OA = dr2$palpa15_aud_rhyme / 60,
@@ -250,10 +249,6 @@ print(ggheatmap)
 write_csv(dr2_center, "dr2_center_DVs.csv")
 ```
 
-
-
-
-
 ### PCA results are weird, not going to try and interpret righ tnow. Recommend repeating once palpa 8 has been added to dataset
 
 ```{r}
@@ -268,8 +263,8 @@ write_csv(dr2_center, "dr2_center_DVs.csv")
 #screeplot(pca_out)
 ```
 
-
 ### Packages:
+
 ```{r}
 installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
-``` 
+```
