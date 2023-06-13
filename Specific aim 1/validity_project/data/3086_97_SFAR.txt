@@ -1,0 +1,322 @@
+clothespin_01_large
+Naming: Correct
+Group: "tool"
+Description: plastic (PG), , 
+Function: pinch (PG), , 
+Context: basket (PG), , 
+Other/Personal: hanging sheets (PG)
+Free Text: clothespin
+
+I used to pinch my brother with a clothespin all the time.*
+Naming: Correct
+PG: 4
+Time: 158 seconds
+
+spatula_01_large
+Naming: Correct
+Group: "tool"
+Description: plastic (PG), , 
+Function: scrape (PG), , 
+Context: kitchen (PG), , 
+Other/Personal: time to eat (PG)
+Free Text: spatula
+
+The cook uses the spatula to flip eggs.*
+Naming: Correct
+PG: 4
+Time: 213 seconds
+
+tapemeasure_01_large
+Naming: Correct
+Group: tool (PG)
+Description: steel (PG), , 
+Function: measure (PG), , 
+Context: toolbox (PG), , 
+Other/Personal: "carpenter"
+Free Text: tape measure
+
+The carpenter uses the tape measure to measure the table.*
+Naming: Correct
+PG: 4
+Time: 204 seconds
+
+jackhammer_01_large
+Naming: Incorrect
+Group: tool (PG)
+Description: noisy (PG), , 
+Function: break up concrete (PG), , 
+Context: truck (PG), , 
+Other/Personal: ear protection (PG)
+Free Text: jackhammer
+
+The jackhammer is used to destroy the building.*
+Naming: Incorrect
+PG: 5
+Time: 273 seconds
+
+wrench_01_large
+Naming: Correct
+Group: tool (PG)
+Description: steel (PG), , 
+Function: tighten (PG), ., 
+Context: garage (PG), , 
+Other/Personal: mechanic (PG)
+Free Text: wrench
+
+The mechanic will tighten with the wrench.*
+Naming: Correct
+PG: 5
+Time: 151 seconds
+
+lawnmower_01_large
+Naming: Correct
+Group: tool (PG)
+Description: 4 wheels (PG), , 
+Function: cut grass (PG), , 
+Context: shed (PG), , 
+Other/Personal: gasoline (PG)
+Free Text: lawnmower
+
+The lawnmower cuts grass.*
+Naming: Correct
+PG: 5
+Time: 123 seconds
+
+chainsaw_01_large
+Naming: Incorrect
+Group: tool (PG)
+Description: chain (PG), , 
+Function: cut tree (PG), , 
+Context: work truck (PG), , 
+Other/Personal: loud (PG)
+Free Text: chainsaw
+
+The chainsaw is used to cut down trees.*
+Naming: Correct
+PG: 5
+Time: 173 seconds
+
+chopsticks_01_large
+Naming: Correct
+Group: tool (PG)
+Description: 2 (PG), , 
+Function: pick up (PG), , 
+Context: Chinese restaurant (PG), , 
+Other/Personal: Chinese food (PG)
+Free Text: chopsticks
+
+I eat with chopsticks.*
+Naming: Correct
+PG: 5
+Time: 88 seconds
+
+canopener_01_large
+Naming: Correct
+Group: tool (PG)
+Description: steel (PG), , 
+Function: turn lever (PG), . (PG), 
+Context: kitchen (PG), , 
+Other/Personal: tomatoes (PG)
+Free Text: can opener
+
+I have can opener, but it's only for left-handed people.*
+Naming: Correct
+PG: 6
+Time: 160 seconds
+
+wateringcan_01_large
+Naming: Correct
+Group: tool (PG)
+Description: spout (PG), , 
+Function: pour water (PG), , 
+Context: Lowes (PG), , 
+Other/Personal: pretty flowers (PG)
+Free Text: watering can
+
+I water the flowers with the watering can.
+Naming: Correct
+PG: 5
+Time: 150 seconds
+
+canopener_01_large
+Naming: Correct
+Group: tool (PG)
+Description: gears (PG), , 
+Function: open can (PG), , 
+Context: kitchen (PG), , 
+Other/Personal: lunch time (PG)
+Free Text: can opener
+
+We open the cans with the can opener.*
+Naming: Correct
+PG: 5
+Time: 181 seconds
+
+jackhammer_01_large
+Naming: Correct
+Group: tool (PG)
+Description: chisel (PG), , 
+Function: break up (PG), , 
+Context: "construction site", , 
+Other/Personal: ear protection (PG)
+Free Text: jackhammer
+
+The jackhammer is used to break things up.*
+Naming: Correct
+PG: 4
+Time: 130 seconds
+
+spatula_01_large
+Naming: Incorrect
+Group: "tool"
+Description: plastic (PG), . (PG), 
+Function: flip eggs (PG), , 
+Context: kitchen (PG), , 
+Other/Personal: Denny's (PG)
+Free Text: spatula
+
+When we flipped the eggs with the spatula, things got better.*
+Naming: Correct
+PG: 5
+Time: 258 seconds
+
+chopsticks_01_large
+Naming: Correct
+Group: "tool"
+Description: 2 (PG), , 
+Function: pick up (PG), , 
+Context: Chinese restaurant (PG), , 
+Other/Personal: good food (PG)
+Free Text: chopsticks
+
+Eating with a spoon must be better than eating with chopsticks.*
+Naming: Correct
+PG: 4
+Time: 122 seconds
+
+clothespin_01_large
+Naming: Correct
+Group: tool (PG)
+Description: wood (PG), . (PG), 
+Function: squeeze (PG), , 
+Context: basket (PG), , 
+Other/Personal: laundry (PG)
+Free Text: clothespin
+
+He just had enough clothespins to do the job.*
+Naming: Correct
+PG: 6
+Time: 573 seconds
+
+chainsaw_01_large
+Naming: Correct
+Group: tool (PG)
+Description: chain (PG), , 
+Function: cut trees (PG), , 
+Context: work truck (PG), , 
+Other/Personal: loud (PG)
+Free Text: chainsaw
+
+The chainsaw is loud enough that we can't stand it.*
+Naming: Correct
+PG: 5
+Time: 156 seconds
+
+wateringcan_01_large
+Naming: Correct
+Group: tool (PG)
+Description: spout (PG), , 
+Function: pour water (PG), , 
+Context: Lowes (PG), , 
+Other/Personal: flowers (PG)
+Free Text: watering can
+
+Several watering cans are needed to fill the pool.*
+Naming: Correct
+PG: 5
+Time: 115 seconds
+
+wrench_01_large
+Naming: Correct
+Group: tool (PG)
+Description: steel (PG), , 
+Function: tighten (PG), . (PG), 
+Context: toolbox (PG), , 
+Other/Personal: "mechanic"
+Free Text: wrench
+
+The mechanic tightens bolts with the wrench.*
+Naming: Correct
+PG: 5
+Time: 232 seconds
+
+tapemeasure_01_large
+Naming: Correct
+Group: tool (PG)
+Description: lock (PG), , 
+Function: measure (PG), , 
+Context: workshop (PG), , 
+Other/Personal: carpenter (PG)
+Free Text: tape measure
+
+If Sammy gets me the tape measure, I'll be done sooner.*
+Naming: Incorrect
+PG: 5
+Time: 307 seconds
+
+lawnmower_01_large
+Naming: Correct
+Group: tool (PG)
+Description: 4 wheels (PG), , 
+Function: cut grass (PG), , 
+Context: tool shed (PG), , 
+Other/Personal: nice lawns (PG)
+Free Text: lawnmower
+
+We hooked the lawnmower on the back because we ran out of gasoline.*
+Naming: Correct
+PG: 5
+Time: 146 seconds
+
+spatula_01_large
+Naming: Correct
+Group: tool (PG)
+Description: steel (PG), , 
+Function: flip eggs (PG), , 
+Context: kitchen (PG), , 
+Other/Personal: breakfast time (PG)
+Free Text: spatula
+
+The cook flips the eggs with the spatula.
+Naming: Correct
+PG: 5
+Time: 150 seconds
+
+lawnmower_01_large
+Naming: Incorrect
+Group: tool (PG)
+Description: wheels (PG), , 
+Function: cut grass (PG), , 
+Context: tool shed (PG), , 
+Other/Personal: landscaping (PG)
+Free Text: lawnmower
+
+The landscaper's job is to push the lawnmower.*
+Naming: Correct
+PG: 5
+Time: 141 seconds
+
+clothespin_01_large
+Naming: Correct
+Group: tool (PG)
+Description: plastic (PG), , 
+Function: pinch (PG), , 
+Context: basket (PG), , 
+Other/Personal: laundry day (PG)
+Free Text: clothespin
+
+We had to hang up the clothes with the clothespins.*
+Naming: Correct
+PG: 5
+Time: 168 seconds
+

@@ -1,0 +1,196 @@
+watermelon_01_large
+Naming: Correct
+Group: fruit (PG)
+Description: slushy (PG), red (PG), rind, . (PG)
+Function: eat (PG), make wine (PG), peel (PG)
+Context: grocery store (PG), south Texas (PG), fruit stand (PG)
+Other/Personal: "messy" (PG)
+Free Text: watermelon
+
+The best type of watermelon is one that's dark red.*
+Naming: Correct
+PG: 11
+Time: 388 seconds
+
+kangaroo_01_large
+Naming: Incorrect
+Group: animal (PG)
+Description: floppy ears (PG), long tail (PG), pouch (PG)
+Function: hops (PG), boxes (PG), puts babies in pouch (PG)
+Context: Australia (PG), zoo (PG), open range (PG)
+Other/Personal: Roo  (PG)
+Free Text: kangaroo
+
+We're going to go to the zoo to see kangaroos.*
+Naming: Correct
+PG: 11
+Time: 214 seconds
+
+pelican_01_large
+Naming: Correct
+Group: bird (PG)
+Description: white and black (PG), fluffy (PG), big gullet (PG)
+Function: swims (PG), dives for fish (PG), swallows fish whole, . (PG)
+Context: on a post (PG), pier (PG), water (PG)
+Other/Personal: ugly (PG)
+Free Text: pelican
+
+Pelicans will gorge on fish.*
+Naming: Correct
+PG: 11
+Time: 235 seconds
+
+icecreamcone_01_large
+Naming: Correct
+Group: dessert (PG)
+Description: conical (PG), cold (PG), sugary (PG)
+Function: lick (PG), scoop (PG), drops (PG)
+Context: Good Humor Truck (PG), freezer (PG), grocery store (PG)
+Other/Personal: dripping (PG)
+Free Text: ice cream cone
+
+Please be sure to avoid dropping the ice cream.*
+Naming: Correct
+PG: 11
+Time: 207 seconds
+
+grasshopper_01_large
+Naming: Correct
+Group: insect (PG)
+Description: green (PG), antenna (PG), small (PG)
+Function: eat leaves  (PG), rub their hind legs (PG), reproduce (PG)
+Context: field (PG), leaf (PG), porch (PG)
+Other/Personal: squishing them (PG)
+Free Text: grasshopper
+
+The grasshopper evaded capture from me.*
+Naming: Correct
+PG: 11
+Time: 355 seconds
+
+cucumber_01_large
+Naming: Correct
+Group: vegetable (PG)
+Description: green - dark and light (PG), seeds (PG), round (PG)
+Function: steam (PG), peel (PG), "cut"
+Context: casserole, . (PG), farm (PG), grocery store (PG)
+Other/Personal: pickle (PG)
+Free Text: cucumbers
+
+I cut a lot of cucumbers to make my salad.*
+Naming: Correct
+PG: 10
+Time: 188 seconds
+
+artichoke_01_large
+Naming: Correct
+Group: vegetable (PG)
+Description: green (PG), bulbous bud (PG), leafy (PG)
+Function: make dip (PG), cook (PG), take the stem off (PG)
+Context: grocery store (PG), farm (PG), food stand (PG)
+Other/Personal: hearts (PG)
+Free Text: artichoke
+
+Artichokes are not well known as a vegetable.*
+Naming: Correct
+PG: 11
+Time: 324 seconds
+
+rhinoceros_01_large
+Naming: Incorrect
+Group: animal (PG)
+Description: strong (PG), two horns (PG), tough hide (PG)
+Function: eat plants (PG), protect (PG), forage (PG)
+Context: Africa (PG), grasslands (PG), zoo, . (PG)
+Other/Personal: push other animals (PG)
+Free Text: rhinoceros
+
+There are only a few rhinoceroses remaining in Africa.*
+Naming: Correct
+PG: 11
+Time: 286 seconds
+
+penguin_01_large
+Naming: Correct
+Group: bird (PG)
+Description: fluffy (PG), black and white (PG), webbed feet (PG)
+Function: incubate their young (PG), slide (PG), swim (PG)
+Context: Antartica (PG), water (PG), ice (PG)
+Other/Personal: famous movie (PG)
+Free Text: penguin
+
+The penguin evaded capture from the polar bear.*
+Naming: Correct
+PG: 11
+Time: 792 seconds
+
+raspberries_01_large
+Naming: Correct
+Group: fruit (PG)
+Description: small (PG), red (PG), sweet (PG)
+Function: eat (PG), wash (PG), pull stems off (PG)
+Context: salad (PG), grocery store (PG), fruit stand (PG)
+Other/Personal: eating them raw, . (PG)
+Free Text: raspberries
+
+Some people pick raspberries directly from the vine.*
+Naming: Incorrect
+PG: 11
+Time: 228 seconds
+
+watermelon_01_large
+Naming: Correct
+Group: fruit (PG)
+Description: red (PG), heavy rind (PG), "juicy"
+Function: eat (PG), cut (PG), de-seed (PG)
+Context: farm (PG), grocery store (PG), fruit stand (PG)
+Other/Personal: lot of seeds (PG)
+Free Text: watermelon
+
+Everybody eats watermelon on July 4th!*
+Naming: Correct
+PG: 10
+Time: 246 seconds
+
+kangaroo_01_large
+Naming: Correct
+Group: animal (PG)
+Description: long tail (PG), pouch (PG), long hind legs, . (PG)
+Function: forage (PG), box (PG), hop (PG)
+Context: Australia (PG), zoo (PG), open range (PG)
+Other/Personal: "joeys"
+Free Text: kangaroo
+
+Small kangaroos are called joeys.*
+Naming: Correct
+PG: 10
+Time: 278 seconds
+
+icecreamcone_01_large
+Naming: Correct
+Group: dessert (PG)
+Description: conical (PG), long (PG), cold (PG)
+Function: lick (PG), scoop (PG), "hold"
+Context: ice cream parlor (PG), grocery store (PG), Good Humor Truck (PG)
+Other/Personal: dripping (PG)
+Free Text: ice cream cone
+
+Ice cream cones come in several flavors.*
+Naming: Correct
+PG: 10
+Time: 286 seconds
+
+rhinoceros_01_large
+Naming: Incorrect
+Group: animal (PG)
+Description: strong (PG), horns (PG), hide (PG)
+Function: lumbers (PG), eats plants (PG), bullies other animals (PG)
+Context: Africa (PG), grasslands (PG), zoo (PG)
+Other/Personal: "poached"
+Free Text: rhinoceros
+
+Rhinoceroses are routinely poached.*
+Naming: Correct
+PG: 10
+Time: 234 seconds
+
