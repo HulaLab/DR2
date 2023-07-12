@@ -1,12 +1,1 @@
-# DR2
-This is the github repo for DR2 and includes sub folders for each aim.
-
-## This is a subsection bolding
-
-### Sub sub section etc
-
-https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links)
-
-### Testing to see if aswiderskiTest can change the readme
-
-### Testing to see if aswiderskiTest can push changes from local github folder through github desktop
+# to deploy scripts, navigate within the folder and open the R enviornment if available. Then, within your rtudio window open the desired r script. 
