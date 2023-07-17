@@ -35,27 +35,35 @@ df2$aoi_all = ifelse(df2$aoi1 + df2$aoi2 + df2$aoi3 + df2$aoi4 == 0, 0,
 
 
 df2$y_5 = ifelse(df2$aoi_all == 0, NA,
-  ifelse(df2$aoi_all == df2$unrelated_location, 0, 
-                   ifelse(df2$aoi_all == df2$phonemic_location, 1,
-                          ifelse(df2$aoi_all == df2$semantic_location, 2,
-                                 ifelse(df2$aoi_all == df2$target_location, 3, 4)))))
+  ifelse(df2$aoi_all == df2$unrelated_location, 'unrelated', 
+                   ifelse(df2$aoi_all == df2$phonemic_location, 'phonemic',
+                          ifelse(df2$aoi_all == df2$semantic_location, 'semantic',
+                                 ifelse(df2$aoi_all == df2$target_location, 'correct', 4)))))
 
-
+##sum aoi1-4 to get counts in a single bin across 4 quadrants, then we can sum that category after grouping on y_5
+df2$aoi_sums = df2$aoi1 + df2$aoi2 +df2$aoi3 +df2$aoi4
 
 df3 = df2 %>%
-  filter(participant == 308630,
-         TRIAL_INDEX < 15) %>%
-  group_by(session, participant, TRIAL_INDEX) %>%
-  # Create max_bin variable as the highest value within BIN_INDEX
-  # Create total_count variables
-  mutate(max_bin = max(BIN_INDEX)*25,
-         aoi1_count = sum(aoi1),
-         aoi2_count = sum(aoi2),
-         aoi3_count = sum(aoi3),
-         aoi4_count = sum(aoi4)) %>%
-  # Select only the newly created variables and a single value of the existing variables
-  distinct(session, participant, TRIAL_INDEX, max_bin, aoi_all, y_5, aoi1_count, aoi2_count, aoi3_count, aoi4_count, target_location, semantic_location, phonemic_location, unrelated_location)
+  select(participant, session, TRIAL_INDEX, BIN_INDEX, targetword, aoi_all, y_5, aoi_sums) %>%
+  group_by(participant, session, TRIAL_INDEX) %>%
+  mutate(max_bin = max(BIN_INDEX)*25) 
+
+test = df3 %>%
+  spread(y_5, aoi_sums)
+
+test2 = test %>%
+  mutate(correct_count = sum(correct, na.rm = TRUE),
+         semantic_count = sum(semantic, na.rm = TRUE),
+         phonemic_count = sum(phonemic, na.rm = TRUE),
+         unrelated_count = sum(unrelated, na.rm = TRUE)) %>%
+  mutate(correct_prop = correct_count/max_bin,
+         semantic_prop = semantic_count/max_bin,
+         phonemic_prop = phonemic_count/max_bin,
+         unrelated_prop = unrelated_count/max_bin)
+
+#################JUST NEED TO VERIFY THAT TEST 3 IS CORRECT THEN WE ARE READY FOR GCA ############
+
+test3 = test2 %>% 
+  distinct(session, participant, targetword, TRIAL_INDEX, correct_prop,  semantic_prop,phonemic_prop,  unrelated_prop)
 
 
-
- 
