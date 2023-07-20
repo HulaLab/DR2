@@ -25,45 +25,71 @@ df2 = df %>%
   rename(aoi4 = RIGHT_IA_4_SAMPLE_COUNT)
 
 
-#0 = all aoi valued = 0
-#1 = aoi1 is greater than 0 etc
-df2$aoi_all = ifelse(df2$aoi1 + df2$aoi2 + df2$aoi3 + df2$aoi4 == 0, 0,
-                     ifelse(df2$aoi1 > 0, 1,
-                       ifelse(df2$aoi2 > 0, 2, 
-                              ifelse(df2$aoi3 > 0, 3, 4))))
+df2.1 = df2 %>%
+  gather(location_content, content_quadrant_number, target_location:unrelated_location, 
+         factor_key = TRUE) %>%
+  gather(gaze_location_name, gaze_quadrant_count, aoi1:aoi4,
+         factor_key = TRUE) %>%
+  mutate(gaze_quadrant_number = as.numeric(gaze_location_name)) %>%
+  mutate(count_by_bin_by_quadrant_content = ifelse(gaze_quadrant_number == content_quadrant_number, 
+                                                   gaze_quadrant_count, NA)) %>%
+  group_by(targetword, participant, session, location_content) %>%
+  mutate(count_by_bin_content = sum(count_by_bin_by_quadrant_content, na.rm = TRUE),
+         max_bin = max(BIN_INDEX)*25)
+
+df2.2 = df2.1 %>%
+  distinct(participant, targetword, location_content, count_by_bin_content, max_bin) %>%
+  rename(gaze_content = location_content) %>%
+  mutate(proportion_gaze_content = count_by_bin_content/max_bin,
+         gaze_content = str_replace_all(gaze_content, "_location", ""))
 
 
 
-df2$y_5 = ifelse(df2$aoi_all == 0, NA,
-  ifelse(df2$aoi_all == df2$unrelated_location, 'unrelated', 
-                   ifelse(df2$aoi_all == df2$phonemic_location, 'phonemic',
-                          ifelse(df2$aoi_all == df2$semantic_location, 'semantic',
-                                 ifelse(df2$aoi_all == df2$target_location, 'correct', 4)))))
 
-##sum aoi1-4 to get counts in a single bin across 4 quadrants, then we can sum that category after grouping on y_5
-df2$aoi_sums = df2$aoi1 + df2$aoi2 +df2$aoi3 +df2$aoi4
+#check to make sure df2.2 is accurate
 
-df3 = df2 %>%
-  select(participant, session, TRIAL_INDEX, BIN_INDEX, targetword, aoi_all, y_5, aoi_sums) %>%
-  group_by(participant, session, TRIAL_INDEX) %>%
-  mutate(max_bin = max(BIN_INDEX)*25) 
-
-test = df3 %>%
-  spread(y_5, aoi_sums)
+test = df %>%
+  filter(participant == 308630,
+         session == 1)
 
 test2 = test %>%
-  mutate(correct_count = sum(correct, na.rm = TRUE),
-         semantic_count = sum(semantic, na.rm = TRUE),
-         phonemic_count = sum(phonemic, na.rm = TRUE),
-         unrelated_count = sum(unrelated, na.rm = TRUE)) %>%
-  mutate(correct_prop = correct_count/max_bin,
-         semantic_prop = semantic_count/max_bin,
-         phonemic_prop = phonemic_count/max_bin,
-         unrelated_prop = unrelated_count/max_bin)
+  filter(TRIAL_INDEX == 43) %>%
+  rename(correct_counts = RIGHT_IA_1_SAMPLE_COUNT,
+         phon_counts = RIGHT_IA_2_SAMPLE_COUNT,
+         sem_counts = RIGHT_IA_3_SAMPLE_COUNT,
+         unrel_counts = RIGHT_IA_4_SAMPLE_COUNT) %>%
+  mutate(sum_correct = sum(correct_counts),
+         sum_phon = sum(phon_counts),
+         sum_sem = sum(sem_counts),
+         sum_unrel = sum(unrel_counts)) %>%
+  mutate(max_bin = max(BIN_INDEX)*25) %>%
+  mutate(props = sum_correct/max_bin)
 
-#################JUST NEED TO VERIFY THAT TEST 3 IS CORRECT THEN WE ARE READY FOR GCA ############
+#######################
+test = df2 %>%
+  filter(participant == 308630,
+         session == 1)
 
-test3 = test2 %>% 
-  distinct(session, participant, targetword, TRIAL_INDEX, correct_prop,  semantic_prop,phonemic_prop,  unrelated_prop)
+test2 = test %>%
+  filter(TRIAL_INDEX == 43) %>%
+  rename(correct_counts = aoi1,
+         phon_counts = aoi2,
+         sem_counts = aoi3,
+         unrel_counts = aoi4) %>%
+  mutate(sum_correct = sum(correct_counts),
+         sum_phon = sum(phon_counts),
+         sum_sem = sum(sem_counts),
+         sum_unrel = sum(unrel_counts)) %>%
+  mutate(max_bin = max(BIN_INDEX)*25) %>%
+  mutate(prop_correct = sum_correct/max_bin,
+         prop_phon = sum_phon/max_bin,
+         prop_sem = sum(sem_counts)/max_bin,
+         prop_unrel = sum(unrel_counts)/max_bin)
 
+df2.2.test = df2.2 %>%
+  filter(participant == 308630,
+         session == 1,
+         targetword == 'stroller')
+
+#winner winner chicken dinner
 
