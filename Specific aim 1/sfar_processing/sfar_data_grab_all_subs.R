@@ -91,4 +91,16 @@ df_long1 = df_long %>%
           time = sub("^.*?_(.*?)_(.*?)_.*$", "\\2", doc_id),
           clinician = sub("^.*?_(.*?)_(.*?)_(.*?)_.*$", "\\3", doc_id),
           group = sub("^.*?_(.*?)_(.*?)_(.*?)_(.*?)_.*$", "\\4", doc_id))
- 
+
+df_max = df_long5 %>%
+  group_by(participant, tx_day, time) %>%
+  summarise(num_sfar_session = max(trial))
+df_max2 = df_max
+df_max2$time = c('a', 'b')
+df_max3 = dfgith_max
+df_max3$tx_day = c('x','y')
+max = rbind(df_max, df_max2, df_max3)
+
+out = max %>%
+  group_by(participant) %>%
+  summarise(sum = sum(num_sfar_session))
