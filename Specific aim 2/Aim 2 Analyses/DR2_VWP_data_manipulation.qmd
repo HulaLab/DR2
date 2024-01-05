@@ -1,0 +1,140 @@
+---
+title: "DR2 VWP data manipulation"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(gazer)
+```
+
+### Load data:
+
+This step involves loading 41 of the participant data files and then converting all columns to character values. This was a necessary step to autoload all data. I will change data types as it becomes necessary below.
+
+```{r}
+folder_path = 'all_data/updated_xls_format'
+all_files = list.files(path = folder_path, pattern = '\\.xlsx$|\\.xls$', full.names = TRUE)
+
+df_list = list()
+
+for (file in all_files) {
+  temp_df <- readxl::read_excel(file)
+  temp_df$file_name <- file  # Adding the file_name column
+  
+  # Convert all columns to character
+  temp_df <- mutate_all(temp_df, as.character)
+  
+  df_list <- append(df_list, list(temp_df))
+}
+
+# Concatenate all dataframes in the list into a single dataframe
+df = bind_rows(df_list)
+head(df)
+
+```
+
+Next step: extract participant and session names:
+
+```{r}
+df = df %>%
+  mutate(participant = str_extract(file_name, "(?<=updated_xls_format/)\\d+"),
+         session = str_extract(file_name, "(?<=_)\\d+"))
+
+```
+
+Remove practice conditions
+
+```{r}
+df = df %>%
+  filter(condition != 'practice' )
+```
+
+Combine left and right eye data
+
+```{r}
+df <- df %>%
+  mutate(aoi1 = ifelse(RIGHT_IA_1_SAMPLE_COUNT != '.', RIGHT_IA_1_SAMPLE_COUNT, LEFT_IA_1_SAMPLE_COUNT),
+         aoi2 = ifelse(RIGHT_IA_2_SAMPLE_COUNT != '.', RIGHT_IA_2_SAMPLE_COUNT, LEFT_IA_2_SAMPLE_COUNT),
+         aoi3 = ifelse(RIGHT_IA_3_SAMPLE_COUNT != '.', RIGHT_IA_3_SAMPLE_COUNT, LEFT_IA_3_SAMPLE_COUNT),
+         aoi4 = ifelse(RIGHT_IA_4_SAMPLE_COUNT != '.', RIGHT_IA_4_SAMPLE_COUNT, LEFT_IA_4_SAMPLE_COUNT))
+```
+
+```{r}
+df = df %>%
+  mutate(off_target = as.numeric(aoi1) + as.numeric(aoi2) + as.numeric(aoi3) + as.numeric(aoi4)) 
+
+
+df = df %>%
+  filter(off_target > 0)
+```
+
+Create count variables
+
+```{r}
+df2 = df %>%
+    pivot_longer(cols = aoi1:aoi4,
+               names_to = "fixation_location",
+               values_to = "count")
+
+df2$fixation_location = as.numeric(substr(df2$fixation_location, 4,4))
+```
+
+```{r}
+df3 = df2 %>%
+  mutate(fixation_name = 
+           ifelse(fixation_location == target_location, 'Target',
+           ifelse(fixation_location == phonemic_location, "Phonemic",
+           ifelse(fixation_location == semantic_location, "Semantic",
+           ifelse(fixation_location == unrelated_location, "unrelated", 'Error')      
+                  )))) %>%
+  mutate(count = as.numeric(count))
+```
+
+```{r}
+df3 %>% 
+  na.omit() %>%
+  ggplot(aes(x = BIN_INDEX, y = count)) +
+  geom_bar(stat = 'summary') +
+  facet_wrap(~fixation_name)
+
+```
+
+```{r}
+test = df3 %>%
+  filter(fixation_name == 'unrelated')
+
+df3 %>% group_by(fixation_name) %>%
+  summarize(sum(count))
+```
+
+Mirman et al code the counts as TRUE OR FALSE for looks at a quadrant. So what i did here was change all 0s, meaning no looks to that quadrant at a given time bin to FALSE and all numbers \> 0 as TRUE\>
+
+```{r}
+
+df3 = df3 %>%
+  mutate(count = ifelse(count != 0, TRUE, FALSE))
+```
+
+Try to get proportions again - Mirman groups by condition here, which for us would mean treated,untreated, unrelated.
+
+```{r}
+df4 = df3 %>%
+  filter(RESPONSE == 'target') %>%
+  filter(BIN_START_TIME < 3500) %>%
+  group_by(participant, session, fixation_name) %>%
+  mutate(nTrials = length(unique(TRIAL_INDEX))) %>% 
+  ungroup() %>%
+  # calculate number of fixations 
+  group_by(participant, session, fixation_name, BIN_INDEX) %>%
+  summarize(sumFix = sum(count), nTrials = unique(nTrials),
+            meanFix = sum(count)/unique(nTrials)) %>%
+  na.omit(meanFix)
+```
+
+```{r}
+ggplot(df4, aes(as.numeric(BIN_INDEX), meanFix, colour = fixation_name)) +
+  #facet_wrap(~ session) +
+  stat_summary(fun = 'mean', geom = "line")
+```
