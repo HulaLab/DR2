@@ -1,0 +1,97 @@
+---
+title: "dr2 vwp data manipulation"
+author: "AMS"
+date: "2024-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(gazer)
+```
+
+Load data:
+
+This step involves loading 41 of the participant data files and then converting all columns to character values. This was a necessary step to autoload all data. I will change data types as it becomes necessary below.
+
+```{r, include=FALSE}
+folder_path = 'all_data/updated_xls_format'
+all_files = list.files(path = folder_path, pattern = '\\.xlsx$|\\.xls$', full.names = TRUE)
+
+df_list = list()
+
+for (file in all_files) {
+  temp_df <- readxl::read_excel(file)
+  temp_df$file_name <- file  # Adding the file_name column
+
+  # Convert all columns to character
+  temp_df <- mutate_all(temp_df, as.character)
+
+  df_list <- append(df_list, list(temp_df))
+}
+
+# Concatenate all dataframes in the list into a single dataframe
+df = bind_rows(df_list)
+head(df)
+```
+
+Extract participant and session names from the datafiles
+
+```{r}
+df = df %>%
+  mutate(participant = str_extract(file_name, "(?<=updated_xls_format/)\\d+"),
+         session = str_extract(file_name, "(?<=_)\\d+"))
+```
+
+Remove practice conditions
+```{r}
+df = df %>%
+  filter(condition != 'practice' )
+```
+
+Create variables that map AOIS to actual fixation names:
+A01-Target
+A02-Phonological distractor
+AO3-Semantic distractor
+AO4-Unrelated distractor
+
+```{r}
+df = df %>%
+  mutate(target = ifelse(RIGHT_IA_1_SAMPLE_COUNT != '.', RIGHT_IA_1_SAMPLE_COUNT, LEFT_IA_1_SAMPLE_COUNT),
+         phonological = ifelse(RIGHT_IA_2_SAMPLE_COUNT != '.', RIGHT_IA_2_SAMPLE_COUNT, LEFT_IA_2_SAMPLE_COUNT),
+         semantic = ifelse(RIGHT_IA_3_SAMPLE_COUNT != '.', RIGHT_IA_3_SAMPLE_COUNT, LEFT_IA_3_SAMPLE_COUNT),
+         unrelated = ifelse(RIGHT_IA_4_SAMPLE_COUNT != '.', RIGHT_IA_4_SAMPLE_COUNT, LEFT_IA_4_SAMPLE_COUNT))
+```
+
+Create count variables and convert data to long form
+```{r}
+df2 = df %>%
+    pivot_longer(cols = target:unrelated,
+               names_to = "fixation_type",
+               values_to = "count")
+```
+
+```{r}
+df3 = df2 %>%
+  mutate(count_round = ifelse(as.numeric(count) > 12.1, 1, 0))
+```
+
+```{r}
+df4 = df3 %>%
+  filter(RESPONSE == 'target') %>%
+  filter(BIN_START_TIME < 3500) %>%
+  group_by(participant, session, fixation_type) %>%
+  mutate(nTrials = length(unique(TRIAL_INDEX))) %>% 
+  ungroup() %>%
+  # calculate number of fixations 
+  group_by(participant, session, fixation_type, BIN_INDEX) %>%
+  summarize(sumFix = sum(count_round), nTrials = unique(nTrials),
+            meanFix = sum(count_round)/unique(nTrials)) %>%
+  na.omit(meanFix)
+```
+
+```{r}
+ggplot(df4, aes(as.numeric(BIN_INDEX), meanFix, colour = fixation_type)) +
+  #facet_wrap(~ session) +
+  stat_summary(fun = 'mean', geom = "line")
+```

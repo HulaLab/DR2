@@ -14,24 +14,24 @@ library(gazer)
 This step involves loading 41 of the participant data files and then converting all columns to character values. This was a necessary step to autoload all data. I will change data types as it becomes necessary below.
 
 ```{r}
-# folder_path = 'all_data/updated_xls_format'
-# all_files = list.files(path = folder_path, pattern = '\\.xlsx$|\\.xls$', full.names = TRUE)
-# 
-# df_list = list()
-# 
-# for (file in all_files) {
-#   temp_df <- readxl::read_excel(file)
-#   temp_df$file_name <- file  # Adding the file_name column
-#   
-#   # Convert all columns to character
-#   temp_df <- mutate_all(temp_df, as.character)
-#   
-#   df_list <- append(df_list, list(temp_df))
-# }
-# 
-# # Concatenate all dataframes in the list into a single dataframe
-# df = bind_rows(df_list)
-# head(df)
+folder_path = 'all_data/updated_xls_format'
+all_files = list.files(path = folder_path, pattern = '\\.xlsx$|\\.xls$', full.names = TRUE)
+
+df_list = list()
+
+for (file in all_files) {
+  temp_df <- readxl::read_excel(file)
+  temp_df$file_name <- file  # Adding the file_name column
+
+  # Convert all columns to character
+  temp_df <- mutate_all(temp_df, as.character)
+
+  df_list <- append(df_list, list(temp_df))
+}
+
+# Concatenate all dataframes in the list into a single dataframe
+df = bind_rows(df_list)
+head(df)
 
 ```
 
@@ -55,46 +55,32 @@ Combine left and right eye data
 
 ```{r}
 df <- df %>%
-  mutate(aoi1 = ifelse(RIGHT_IA_1_SAMPLE_COUNT != '.', RIGHT_IA_1_SAMPLE_COUNT, LEFT_IA_1_SAMPLE_COUNT),
-         aoi2 = ifelse(RIGHT_IA_2_SAMPLE_COUNT != '.', RIGHT_IA_2_SAMPLE_COUNT, LEFT_IA_2_SAMPLE_COUNT),
-         aoi3 = ifelse(RIGHT_IA_3_SAMPLE_COUNT != '.', RIGHT_IA_3_SAMPLE_COUNT, LEFT_IA_3_SAMPLE_COUNT),
-         aoi4 = ifelse(RIGHT_IA_4_SAMPLE_COUNT != '.', RIGHT_IA_4_SAMPLE_COUNT, LEFT_IA_4_SAMPLE_COUNT))
+  mutate(target = ifelse(RIGHT_IA_1_SAMPLE_COUNT != '.', RIGHT_IA_1_SAMPLE_COUNT, LEFT_IA_1_SAMPLE_COUNT),
+         phonological = ifelse(RIGHT_IA_2_SAMPLE_COUNT != '.', RIGHT_IA_2_SAMPLE_COUNT, LEFT_IA_2_SAMPLE_COUNT),
+         semantic = ifelse(RIGHT_IA_3_SAMPLE_COUNT != '.', RIGHT_IA_3_SAMPLE_COUNT, LEFT_IA_3_SAMPLE_COUNT),
+         unrelated = ifelse(RIGHT_IA_4_SAMPLE_COUNT != '.', RIGHT_IA_4_SAMPLE_COUNT, LEFT_IA_4_SAMPLE_COUNT))
 ```
 
-```{r}
-df = df %>%
-  mutate(off_target = as.numeric(aoi1) + as.numeric(aoi2) + as.numeric(aoi3) + as.numeric(aoi4)) 
-
-
-df = df %>%
-  filter(off_target > 0)
+```{}
 ```
 
 Create count variables
 
 ```{r}
 df2 = df %>%
-    pivot_longer(cols = aoi1:aoi4,
-               names_to = "fixation_location",
+    pivot_longer(cols = target:unrelated,
+               names_to = "fixation_type",
                values_to = "count")
 
-df2$fixation_location = as.numeric(substr(df2$fixation_location, 4,4))
+```
+
+```{}
 ```
 
 ```{r}
+df2$count = as.numeric(df2$count)
 df3 = df2 %>%
-  mutate(fixation_name = 
-           ifelse(fixation_location == target_location, 'Target',
-           ifelse(fixation_location == phonemic_location, "Phonemic",
-           ifelse(fixation_location == semantic_location, "Semantic",
-           ifelse(fixation_location == unrelated_location, "unrelated", 'Error')      
-                  )))) %>%
-  mutate(count = as.numeric(count))
-```
-
-```{r}
-df3 = df3 %>%
-  mutate(count_round = ifelse(as.numeric(count) > 12.1, 1, 0))
+  mutate(count_round = ifelse(count > 12.1, 1, 0))
 ```
 
 ```{r}
@@ -114,7 +100,7 @@ df3 %>% group_by(fixation_name) %>%
   summarize(sum(count))
 ```
 
-```{}
+```         
 ```
 
 Try to get proportions again - Mirman groups by condition here, which for us would mean treated,untreated, unrelated.

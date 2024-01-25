@@ -1,0 +1,40 @@
+
+% Table created by stargazer v.5.2.3 by Marek Hlavac, Social Policy Institute. E-mail: marek.hlavac at gmail.com
+% Date and time: Sun, Jan 21, 2024 - 5:18:46 PM
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lcccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{4}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-5} 
+\\[-1.8ex] & wordnet & glove & textwin & semdist \\ 
+\\[-1.8ex] & (1) & (2) & (3) & (4)\\ 
+\hline \\[-1.8ex] 
+ glove & 0.265$^{***}$ &  & 0.745$^{***}$ & 0.134$^{***}$ \\ 
+  & (0.030) &  & (0.023) & (0.035) \\ 
+  & & & & \\ 
+ wordnet &  & 0.164$^{***}$ & 0.118$^{***}$ & 0.317$^{***}$ \\ 
+  &  & (0.018) & (0.022) & (0.027) \\ 
+  & & & & \\ 
+ textwin & 0.130$^{***}$ & 0.511$^{***}$ &  & 0.065$^{**}$ \\ 
+  & (0.025) & (0.016) &  & (0.029) \\ 
+  & & & & \\ 
+ semdist & 0.228$^{***}$ & 0.060$^{***}$ & 0.043$^{**}$ &  \\ 
+  & (0.019) & (0.016) & (0.019) &  \\ 
+  & & & & \\ 
+ Constant & 0.359$^{***}$ & $-$0.118$^{***}$ & 0.018 & 0.527$^{***}$ \\ 
+  & (0.014) & (0.013) & (0.016) & (0.015) \\ 
+  & & & & \\ 
+\hline \\[-1.8ex] 
+Observations & 1,770 & 1,770 & 1,770 & 1,770 \\ 
+R$^{2}$ & 0.259 & 0.507 & 0.485 & 0.156 \\ 
+Adjusted R$^{2}$ & 0.258 & 0.507 & 0.484 & 0.154 \\ 
+Residual Std. Error (df = 1766) & 0.111 & 0.088 & 0.106 & 0.131 \\ 
+F Statistic (df = 3; 1766) & 206.247$^{***}$ & 606.440$^{***}$ & 553.936$^{***}$ & 108.424$^{***}$ \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{4}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 

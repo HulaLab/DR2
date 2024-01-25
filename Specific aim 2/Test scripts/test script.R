@@ -25,4 +25,17 @@ df2 %>%
 
 df3 = df2 %>%
   mutate(gaze = ifelse(gaze != 0, TRUE, FALSE))
+
+
+###############################################
+library(readxl)
+library(tidyverse)
+
+df <- read_excel("test data manipulation - Copy.xlsx")
+
+df <- df %>%
+  mutate(aoi1 = ifelse(RIGHT_IA_1_SAMPLE_COUNT != '.', RIGHT_IA_1_SAMPLE_COUNT, LEFT_IA_1_SAMPLE_COUNT),
+         aoi2 = ifelse(RIGHT_IA_2_SAMPLE_COUNT != '.', RIGHT_IA_2_SAMPLE_COUNT, LEFT_IA_2_SAMPLE_COUNT),
+         aoi3 = ifelse(RIGHT_IA_3_SAMPLE_COUNT != '.', RIGHT_IA_3_SAMPLE_COUNT, LEFT_IA_3_SAMPLE_COUNT),
+         aoi4 = ifelse(RIGHT_IA_4_SAMPLE_COUNT != '.', RIGHT_IA_4_SAMPLE_COUNT, LEFT_IA_4_SAMPLE_COUNT))
          
