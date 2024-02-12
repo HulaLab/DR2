@@ -1,0 +1,216 @@
+---
+title: "Pretreatment GCA analyses"
+output: html_notebook
+author: "AMS"
+---
+
+
+
+Model 2:   If we think that the effect of the session might vary across participants (i.e., different participants might respond differently to the sessions), we can include session as a random slope within the random effect of participants. The model formula would be
+$$ meanFix ~ poly1 + poly2 + (1 + session | participant) $$
+
+Model 3:
+$$ MeanFix ~ (poly1 + poly2)*session + (1|participant) $$
+## we need to add in fixation
+### 3 way interaction
+$$MeanFix ~ (poly1 + poly2)*session*fixation + (1|participant)$$
+
+
+$$ MeanFix ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation + session*fixation + (1|participant) $$
+
+$$ Meanfix_by_type ~.... $$ 
+
+### or just subset the data for fixation_type
+
+
+
+```{r}
+library(tidyverse)
+library(gazer)
+library(readr)
+library(lme4)
+```
+
+
+### Load data, which is formated in ```vwp_preproc_final.Rmd'
+
+```{r}
+df = read_csv('gca_formatted_data.csv')
+summary(df)
+```
+
+### Transformation centers the values of bin_index then does the polynomial transformation
+### Create gca dataset following https://dmirman.github.io/GCA/CohRhy_example.html
+```{r}
+df_gca <- code_poly(df, predictor = "BIN_INDEX", poly.order = 4)
+```
+
+
+### GCA like mirman
+ - Mirman uses lmer to model these data, which assumes the residuals of the response variable are linear. 
+ - I imagine he has some justification for this, but it does have the potential for estimating out of bounds predictions (e.g, negative proportions or more olikely, CIs that include negative values)
+ - On first pass, to be like Mirman we can first model ```meanFix``` with a participant only random effect and then look at the residuals
+ 
+```{r}
+m_residuals <- lmer(meanFix ~ (1 | participant), data = subset(df_gca, fixation_type = "phonologial"))
+```
+
+```{r}
+summary(m_residuals)
+```
+
+### Next we can extract the residuals and examine them with a QQ plot and a Shapiro Wilks test
+```{r}
+residuals <- residuals(m_residuals)
+# Q-Q plot
+qqnorm(residuals)
+qqline(residuals)
+```
+#### note:
+logit(p, percents=max(p, na.rm = TRUE) > 1, adjust)
+Arguments
+p	numeric vector or array of proportions or percentages.
+percents	TRUE for percentages.
+adjust	adjustment factor to avoid proportions of 0 or 1; defaults to 0 if there are no such proportions in the data, and to .025 if there are.
+
+```{r}
+model2 <- lmer(meanFix ~ (poly1 + poly2) * session + (1 | participant), data = df_gca)
+summary(model2)
+```
+
+
+•	Time Effects: The significant negative coefficients for poly1 suggests that for every sd increase in poly1 there meanfix decreases.
+• poly2 seems to need to be plotting
+•	Session Effect: The negative but not statistically significant coefficient for session suggests there is not a strong or consistent session effect across participants.
+•	Interaction Terms: The interaction terms do not appear to be significant, indicating that the effect of time on meanFix does not differ notably between sessions 1 and 2.
+
+
+```{r}
+residuals <- residuals(model2)
+# Q-Q plot
+qqnorm(residuals)
+qqline(residuals)
+```
+
+```{r}
+## Logit transform the proportions
+library(car)
+
+df_gca = df_gca %>% 
+  mutate(logit_mean_fix = logit(meanFix))
+```
+
+## Rerun lmer model to see if we get acceptable residuals
+```{r}
+m_residuals_logit <- lmer(logit_mean_fix ~ (1 | participant), data = subset(df_gca, fixation_type = "phonologial"))
+residuals_logit <- residuals(m_residuals)
+```
+
+```{r}
+# Q-Q plot
+qqnorm(residuals_logit)
+qqline(residuals_logit)
+```
+
+
+```{r}
+df_gca$y <- cbind(df_gca$meanFix * df_gca$nTrials, df_gca$nTrials - df_gca$meanFix * df_gca$nTrials)
+```
+
+```{r}
+library(brms)
+```
+
+```{r}
+# define custom family
+beta_binomial2 <- custom_family(
+  "beta_binomial2", dpars = c("mu", "phi"),
+  links = c("logit", "log"), lb = c(NA, 0),
+  type = "int", vars = "vint1[n]"
+)
+stan_funs <- "
+  real beta_binomial2_lpmf(int y, real mu, real phi, int T) {
+    return beta_binomial_lpmf(y | T, mu * phi, (1 - mu) * phi);
+  }
+  int beta_binomial2_rng(real mu, real phi, int T) {
+    return beta_binomial_rng(T, mu * phi, (1 - mu) * phi);
+  }
+"
+stanvars <- stanvar(scode = stan_funs, block = "functions")
+
+
+posterior_predict_beta_binomial2 <- function(i, prep, ...) {
+  mu <- brms::get_dpar(prep, "mu", i = i)
+  phi <- brms::get_dpar(prep, "phi", i = i)
+  trials <- prep$data$vint1[i]
+  beta_binomial2_rng(mu, phi, trials)
+}
+
+```
+
+```{r}
+df_gca = df_gca %>%
+  mutate(nTrials = as.integer(nTrials),
+         y = as.integer(nTrials))
+```
+
+```{r}
+gca_bb2 <-
+  brm(data = df_gca, 
+      family = beta_binomial2,  # custom likelihood from above
+      sumFix | vint(nTrials) ~ (poly1 + poly2)*session + fixation_type + (1 | participant),
+      prior = c(prior(normal(0, 1.5), class = b),
+                prior(exponential(1), class = phi)),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4,
+      stanvars = stanvars,  # note our `stanvars`
+      seed = 12,
+      file = "fits/gca_bb_full_mod")
+```
+```{r}
+summary(gca_bb2)
+```
+
+```{r}
+expose_functions(gca_bb2, vectorize = TRUE)
+```
+
+```{r}
+log_lik_beta_binomial2 <- function(i, prep) {
+  mu <- brms::get_dpar(prep, "mu", i = i)
+  phi <- brms::get_dpar(prep, "phi", i = i)
+  trials <- prep$data$vint1[i]
+  y <- prep$data$Y[i]
+  beta_binomial2_lpmf(y, mu, phi, trials)
+}
+
+posterior_predict_beta_binomial2 <- function(i, prep, ...) {
+  mu <- brms::get_dpar(prep, "mu", i = i)
+  phi <- brms::get_dpar(prep, "phi", i = i)
+  trials <- prep$data$vint1[i]
+  beta_binomial2_rng(mu, phi, trials)
+}
+```
+
+```{r}
+plot(gca_bb2)
+```
+
+```{r}
+pp_check(gca_bb2)
+```
+
+
+```{r}
+CohortRhyme.gca <- code_poly(CohortRhyme, predictor = "timeBin", poly.order = 4, draw.poly = FALSE)
+cohort.base <- lmer(FixProp ~ (poly1+poly2+poly3+poly4)*Object + 
+                      (1+poly1+poly2+poly3+poly4 | subjID) + 
+                      (1+poly1+poly2 | subjID:Object), 
+                    data=subset(CohortRhyme.gca, Type == "Cohort"), REML=F)
+```
+
+```{r}
+residuals <- residuals(cohort.base)
+# Q-Q plot
+qqnorm(residuals)
+qqline(residuals)
+```

@@ -78,7 +78,7 @@ df3 = df2 %>%
 
 ```{r}
 df4 = df3 %>%
-  filter(RESPONSE == 'target') %>%
+  #filter(RESPONSE == 'target') %>%
   filter(BIN_START_TIME < 3500) %>%
   group_by(participant, session, fixation_type) %>%
   mutate(nTrials = length(unique(TRIAL_INDEX))) %>% 
@@ -86,8 +86,7 @@ df4 = df3 %>%
   # calculate number of fixations 
   group_by(participant, session, fixation_type, BIN_INDEX) %>%
   summarize(sumFix = sum(count_round), nTrials = unique(nTrials),
-            meanFix = sum(count_round)/unique(nTrials)) %>%
-  na.omit(meanFix)
+            meanFix = sum(count_round)/unique(nTrials)) 
 ```
 
 ```{r}

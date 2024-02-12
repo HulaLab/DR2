@@ -99,7 +99,7 @@ correlation = round(cor(pcadata[,1:6]),2)
 stargazer(correlation, summary = FALSE, type = "text", title = "Table 4: DR1 and 2 correlation matrix", align = TRUE, digits = 2)
 ```
 
-\#Formating data for PCA - Need to create equal variance, mean centering
+#Formating data for PCA - Need to create equal variance, mean centering
 
 ```{r}
 #df_center = data.frame(sapply(pcadata, function(x) scale(x, scale = FALSE)))
@@ -183,7 +183,7 @@ print(ggheatmap)
 #pca_out = princomp(~ ppt + aud_rhyme + written_rhyme + aud_syn + written_syn, covmatrix  = cm, scores = T)
 ```
 
-\#Create df_center with all variables from dr2
+#Create df_center with all variables from dr2
 
 ```{r}
 dr2_vars = data.frame(ppt = dr2$ppt/52,
