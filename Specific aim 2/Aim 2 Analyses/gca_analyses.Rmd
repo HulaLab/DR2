@@ -151,14 +151,18 @@ posterior_predict_beta_binomial2 <- function(i, prep, ...) {
 ```{r}
 df_gca = df_gca %>%
   mutate(nTrials = as.integer(nTrials),
-         y = as.integer(nTrials))
+         y = as.integer(nTrials)) %>%
+  mutate(fixation_type = ifelse(fixation_type == 'unrelated', 'a_unrelated', fixation_type)) %>%
+  mutate(session = factor(session))
+str(df_gca$session)
 ```
 
 ```{r}
 gca_bb2 <-
   brm(data = df_gca, 
       family = beta_binomial2,  # custom likelihood from above
-      sumFix | vint(nTrials) ~ (poly1 + poly2)*session + fixation_type + (1 | participant),
+      sumFix | vint(nTrials) ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
+        session*fixation_type + (1 + poly1 + poly2 + session + fixation_type | participant),
       prior = c(prior(normal(0, 1.5), class = b),
                 prior(exponential(1), class = phi)),
       iter = 2000, warmup = 1000, cores = 4, chains = 4,
@@ -198,19 +202,42 @@ plot(gca_bb2)
 ```{r}
 pp_check(gca_bb2)
 ```
-
-
 ```{r}
-CohortRhyme.gca <- code_poly(CohortRhyme, predictor = "timeBin", poly.order = 4, draw.poly = FALSE)
-cohort.base <- lmer(FixProp ~ (poly1+poly2+poly3+poly4)*Object + 
-                      (1+poly1+poly2+poly3+poly4 | subjID) + 
-                      (1+poly1+poly2 | subjID:Object), 
-                    data=subset(CohortRhyme.gca, Type == "Cohort"), REML=F)
+post = as_draws_df(gca_bb2)
 ```
 
 ```{r}
-residuals <- residuals(cohort.base)
-# Q-Q plot
-qqnorm(residuals)
-qqline(residuals)
+df3 <- df3 %>%
+  group_by(TRIAL_LABEL) %>%
+  mutate(TRIAL_LABEL = as.character(TRIAL_LABEL),
+         BIN_INDEX = as.integer(BIN_INDEX)) %>%
+  code_poly(predictor = "BIN_INDEX", poly.order = 2)
+```
+
+```{r}
+start.time <- Sys.time()
+gca_binomial <-
+  brm(data = df3, 
+      family = binomial(link = 'logit'),  # switch family to do item level analysis
+      count_round | trials(nTrials) ~ (1 | participant) +
+        (1 | TRIAL_LABEL),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4,
+      seed = 12,
+      file = "fits/gca_binomial_intcepts")
+end.time <- Sys.time()
+time.taken <- round(end.time - start.time,2)
+
+```
+
+```{r}
+gca_binomial <-
+  brm(data = df3, 
+      family = binomial(link = 'logit'),  # switch family to do item level analysis
+      count_round | trials(nTrials) ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
+        session*fixation_type + (1 + poly1 + poly2 + session + fixation_type | participant) +
+        (1 | TRIAL_LABEL),
+      prior = c(prior(normal(0, 1.5), class = b)),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4,
+      seed = 12,
+      file = "fits/gca_binomial_intcepts")
 ```

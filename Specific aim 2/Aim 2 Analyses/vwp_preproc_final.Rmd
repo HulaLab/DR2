@@ -73,7 +73,12 @@ df2 = df %>%
 
 ```{r}
 df3 = df2 %>%
-  mutate(count_round = ifelse(as.numeric(count) > 12.1, 1, 0))
+  mutate(count_round = ifelse(as.numeric(count) > 12.1, 1, 0)) %>%
+  group_by(participant, session, fixation_type) %>%
+  mutate(nTrials = length(unique(TRIAL_INDEX))) %>%
+  mutate(fixation_type = ifelse(fixation_type == 'unrelated', 'a_unrelated', fixation_type)) %>%
+  mutate(fixation_type = factor(fixation_type),
+         session = factor(session))
 ```
 
 ```{r}
