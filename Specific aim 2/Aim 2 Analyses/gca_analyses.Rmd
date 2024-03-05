@@ -2,37 +2,44 @@
 title: "Pretreatment GCA analyses"
 output: html_notebook
 author: "AMS"
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
-
-
-Model 2:   If we think that the effect of the session might vary across participants (i.e., different participants might respond differently to the sessions), we can include session as a random slope within the random effect of participants. The model formula would be
+Model 2: If we think that the effect of the session might vary across
+participants (i.e., different participants might respond differently to
+the sessions), we can include session as a random slope within the
+random effect of participants. The model formula would be
 $$ meanFix ~ poly1 + poly2 + (1 + session | participant) $$
 
-Model 3:
-$$ MeanFix ~ (poly1 + poly2)*session + (1|participant) $$
-## we need to add in fixation
-### 3 way interaction
+Model 3: $$ MeanFix ~ (poly1 + poly2)*session + (1|participant) $$ \##
+we need to add in fixation \### 3 way interaction
 $$MeanFix ~ (poly1 + poly2)*session*fixation + (1|participant)$$
-
 
 $$ MeanFix ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation + session*fixation + (1|participant) $$
 
-$$ Meanfix_by_type ~.... $$ 
+$$ Meanfix_by_type ~.... $$
 
 ### or just subset the data for fixation_type
-
-
 
 ```{r}
 library(tidyverse)
 library(gazer)
 library(readr)
 library(lme4)
+library(tidybayes)
+library(ggdist)
+library(brms)
+library(rstan)
 ```
 
+```{r}
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+```
 
-### Load data, which is formated in ```vwp_preproc_final.Rmd'
+### Load data, which is formated in \`\`\`vwp_preproc_final.Rmd'
 
 ```{r}
 df = read_csv('gca_formatted_data.csv')
@@ -40,17 +47,23 @@ summary(df)
 ```
 
 ### Transformation centers the values of bin_index then does the polynomial transformation
-### Create gca dataset following https://dmirman.github.io/GCA/CohRhy_example.html
+
+### Create gca dataset following <https://dmirman.github.io/GCA/CohRhy_example.html>
+
 ```{r}
 df_gca <- code_poly(df, predictor = "BIN_INDEX", poly.order = 4)
 ```
 
-
 ### GCA like mirman
- - Mirman uses lmer to model these data, which assumes the residuals of the response variable are linear. 
- - I imagine he has some justification for this, but it does have the potential for estimating out of bounds predictions (e.g, negative proportions or more olikely, CIs that include negative values)
- - On first pass, to be like Mirman we can first model ```meanFix``` with a participant only random effect and then look at the residuals
- 
+
+-   Mirman uses lmer to model these data, which assumes the residuals of
+    the response variable are linear.
+-   I imagine he has some justification for this, but it does have the
+    potential for estimating out of bounds predictions (e.g, negative
+    proportions or more olikely, CIs that include negative values)
+-   On first pass, to be like Mirman we can first model `meanFix` with a
+    participant only random effect and then look at the residuals
+
 ```{r}
 m_residuals <- lmer(meanFix ~ (1 | participant), data = subset(df_gca, fixation_type = "phonologial"))
 ```
@@ -60,30 +73,35 @@ summary(m_residuals)
 ```
 
 ### Next we can extract the residuals and examine them with a QQ plot and a Shapiro Wilks test
+
 ```{r}
 residuals <- residuals(m_residuals)
 # Q-Q plot
 qqnorm(residuals)
 qqline(residuals)
 ```
+
 #### note:
-logit(p, percents=max(p, na.rm = TRUE) > 1, adjust)
-Arguments
-p	numeric vector or array of proportions or percentages.
-percents	TRUE for percentages.
-adjust	adjustment factor to avoid proportions of 0 or 1; defaults to 0 if there are no such proportions in the data, and to .025 if there are.
+
+logit(p, percents=max(p, na.rm = TRUE) \> 1, adjust) Arguments p numeric
+vector or array of proportions or percentages. percents TRUE for
+percentages. adjust adjustment factor to avoid proportions of 0 or 1;
+defaults to 0 if there are no such proportions in the data, and to .025
+if there are.
 
 ```{r}
 model2 <- lmer(meanFix ~ (poly1 + poly2) * session + (1 | participant), data = df_gca)
 summary(model2)
 ```
 
-
-•	Time Effects: The significant negative coefficients for poly1 suggests that for every sd increase in poly1 there meanfix decreases.
-• poly2 seems to need to be plotting
-•	Session Effect: The negative but not statistically significant coefficient for session suggests there is not a strong or consistent session effect across participants.
-•	Interaction Terms: The interaction terms do not appear to be significant, indicating that the effect of time on meanFix does not differ notably between sessions 1 and 2.
-
+• Time Effects: The significant negative coefficients for poly1 suggests
+that for every sd increase in poly1 there meanfix decreases. • poly2
+seems to need to be plotting • Session Effect: The negative but not
+statistically significant coefficient for session suggests there is not
+a strong or consistent session effect across participants. • Interaction
+Terms: The interaction terms do not appear to be significant, indicating
+that the effect of time on meanFix does not differ notably between
+sessions 1 and 2.
 
 ```{r}
 residuals <- residuals(model2)
@@ -101,6 +119,7 @@ df_gca = df_gca %>%
 ```
 
 ## Rerun lmer model to see if we get acceptable residuals
+
 ```{r}
 m_residuals_logit <- lmer(logit_mean_fix ~ (1 | participant), data = subset(df_gca, fixation_type = "phonologial"))
 residuals_logit <- residuals(m_residuals)
@@ -112,14 +131,10 @@ qqnorm(residuals_logit)
 qqline(residuals_logit)
 ```
 
-
 ```{r}
 df_gca$y <- cbind(df_gca$meanFix * df_gca$nTrials, df_gca$nTrials - df_gca$meanFix * df_gca$nTrials)
 ```
 
-```{r}
-library(brms)
-```
 
 ```{r}
 # define custom family
@@ -157,21 +172,31 @@ df_gca = df_gca %>%
 str(df_gca$session)
 ```
 
+
 ```{r}
-gca_bb2 <-
+gca_bb <-
   brm(data = df_gca, 
-      family = beta_binomial2,  # custom likelihood from above
-      sumFix | vint(nTrials) ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
+      family = beta_binomial(link = "logit"),  
+      sumFix | trials(nTrials) ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
         session*fixation_type + (1 + poly1 + poly2 + session + fixation_type | participant),
       prior = c(prior(normal(0, 1.5), class = b),
                 prior(exponential(1), class = phi)),
       iter = 2000, warmup = 1000, cores = 4, chains = 4,
-      stanvars = stanvars,  # note our `stanvars`
+      #stanvars = stanvars,  # note our `stanvars`
       seed = 12,
       file = "fits/gca_bb_full_mod")
 ```
+
 ```{r}
-summary(gca_bb2)
+pp_check(gca_bb)
+```
+
+```{r}
+get_variables(gca_bb)
+```
+
+``` {R}
+conditional_effects(gca_bb)
 ```
 
 ```{r}
@@ -196,12 +221,13 @@ posterior_predict_beta_binomial2 <- function(i, prep, ...) {
 ```
 
 ```{r}
-plot(gca_bb2)
+df_pp = tidy_draws(gca_bb)
 ```
 
 ```{r}
 pp_check(gca_bb2)
 ```
+
 ```{r}
 post = as_draws_df(gca_bb2)
 ```
@@ -232,12 +258,39 @@ time.taken <- round(end.time - start.time,2)
 ```{r}
 gca_binomial <-
   brm(data = df3, 
-      family = binomial(link = 'logit'),  # switch family to do item level analysis
-      count_round | trials(nTrials) ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
+      family = bernoulli(link = 'logit'),  # switch family to do item level analysis
+      count_round ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
         session*fixation_type + (1 + poly1 + poly2 + session + fixation_type | participant) +
         (1 | TRIAL_LABEL),
       prior = c(prior(normal(0, 1.5), class = b)),
       iter = 2000, warmup = 1000, cores = 4, chains = 4,
       seed = 12,
-      file = "fits/gca_binomial_intcepts")
+      file = "fits/gca_bernoulli")
+```
+
+```{r}
+gca_normal_1 <-
+  brm(data = df_gca, 
+      sumFix ~ (poly1 + poly2)*session + (poly1 + poly2)*fixation_type + 
+        session*fixation_type + (1 + poly1 + poly2 + session + fixation_type | participant),
+      prior = c(prior(normal(0, 1.5), class = b)),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4,
+      seed = 12,
+      file = "fits/gca_normal_1")
+
+gca_normal_2 <-
+  brm(data = df_gca, 
+      sumFix
+      ~ (poly1 + poly1^2)*session + (poly1 + poly1^2)*fixation_type + 
+        session*fixation_type + (1 + poly1 + poly1^2 + session + fixation_type | participant),
+      prior = c(prior(normal(0, 1.5), class = b)),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4,
+      seed = 12,
+      file = "fits/gca_normal_2")
+
+
+```
+
+```{r}
+pp_check(gca_normal_1)
 ```

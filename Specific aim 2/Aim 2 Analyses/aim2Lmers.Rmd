@@ -1,0 +1,145 @@
+---
+title: "Aim2Lmers"
+author: "AMS"
+date: "2024-03-04"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(gazer)
+library(readr)
+library(lme4)
+```
+
+```{r}
+df = read_csv('gca_formatted_data.csv')
+summary(df)
+```
+
+```{r}
+df_gca <- code_poly(df, predictor = "BIN_INDEX", poly.order = 4) %>%
+  mutate(Object = ifelse(fixation_type == 'unrelated', 'a_unrelated', fixation_type)) %>%
+  mutate(session = factor(session)) %>%
+  rename(subj = participant)
+```
+
+
+```{r}
+df_gca = df_gca %>%
+  filter(BIN_INDEX < 30.1)
+m1 = lmer(meanFix~(poly1 + poly2) * Object * session + (poly1 + poly2 | subj) + 
+            (poly1 + poly2 | subj:Object), 
+            data=subset(df_gca),REML=F)
+summary(m1)
+```
+
+```{r}
+summary(m1)
+```
+
+### Interpreations
+*Intercept*: The estimated baseline (intercept) when object is set to unrelated and session is set to 1. The p-value suggests this estimate is not statistically significant (p = 0.129).
+-The proportion of looks at the unrelated distractor at the middle of the trial is not statistically different from zero.
+
+*Main effects for Poly1 and Poly2*: We interpret the main effects for poly1 and poly2 at our reference value of object = 'unrelated' in the middle of the trial. They do not show statistically significant effects on mean fixation (p = 0.232 and p = 0.749, respectively).
+- poly1 no rise 
+
+*Main effects for object relative to unrelated)*:
+
+- Phonological: The effect of gazing at the phonological distractor as opposed to the unrelated distractor is not statistically significant (p = 0.916).
+
+- Semantic: Similarly, the main effect of the semantic distractor  does not significantly differ from unrelated effect (p = 0.186).
+- Target: When participants gaze are the target fixation, there is a significant positive effect compared to "Unrelated" (p < 0.001), indicating a substantial increase in mean fixation for "Target" relative to "Unrelated".
+
+Session Effect: The main effect of session2 is not statistically significant (p = 0.131), suggesting no overall difference in the outcome variable between the sessions when not considering interactions.
+
+Interactions with Poly1 and Poly2:
+
+Poly1:Objectsemantic: Interaction between poly1 and being in the semantic distractor is significant (p = 0.049), suggesting the effect of poly1 on the outcome varies when comparing "Semantic" to "Unrelated".
+
+Poly1:Objecttarget: Similarly, the interaction between poly1 and target is significant (p = 0.006), indicating a different effect of poly1 in the "Target" condition relative to "Unrelated".
+
+Poly2:Objecttarget: The interaction between poly2 and target is highly significant (p < 0.001), showing a pronounced difference in the effect of poly2 for target compared to unrelated distractor.
+
+Session Interactions:
+
+Most interactions involving session2 are not statistically significant, indicating that the effects of Object categories and polynomial predictors do not differ significantly between sessions, with a few exceptions:
+
+Objectsemantic:session2: Approaches significance (p = 0.068), suggesting a potential session-related difference in the semantic compared to the unrelated distractor, though not conventionally significant.
+
+Poly1:Objecttarget:session2: Highly significant (p < 0.001), indicating a significant session-related difference in the effect of poly1 for the target location relative to the unrelated distractor.
+
+Poly2:Objecttarget:session2: Also significant (p < 0.001), suggesting a significant session-related difference in the effect of poly2 for the target relative to unrelatd distractor.
+
+
+
+####NEXT STEPS#####
+INterested in model predictions over time.
+Three seperate models (unrelated vs remaining 3)
+Plot model predictions over time bin (need to transform poly1 back to bin) reverse z-transform
+Superimpose observed data on model curves
+
+```{r}
+df_gca_correct = df_gca %>%
+  filter(BIN_INDEX < 30.1) %>%
+  filter(Object %in% c("target", "a_unrelated"))
+
+m_correct = lmer(meanFix~(poly1 + poly2) * Object * session + (poly1 + poly2 | subj) + 
+            (poly1 + poly2 | subj:Object), 
+            data=subset(df_gca_correct),REML=F)
+```
+
+```{r}
+summary(m_correct)
+```
+
+```{r}
+ 
+```
+
+```{r}
+# Step 3: Plot with facets
+p = ggplot(pred_data, aes(x = poly1, y = meanFix_predicted, color = Object)) +
+  geom_line() +
+  facet_grid(Object ~ session) +  # Creates a plot for each Object-session combination
+  labs(title = "Predicted meanFix vs. poly1",
+       x = "poly1",
+       y = "Predicted meanFix") +
+  theme_minimal()
+p + geom_point(data = df_gca_correct, aes(x = poly1, y = meanFix, color = Object), alpha = 0.5)
+```
+```{r}
+# Generate a comprehensive prediction grid
+pred_data <- expand.grid(
+  poly1 = mean(df_gca_correct$poly1),  # Representative value or a sequence if varying
+  poly2 = seq(from = min(df_gca_correct$poly2), to = max(df_gca_correct$poly2), length.out = 100),
+  Object = factor(c('target', 'a_unrelated'), levels = c('a_unrelated', 'target')),
+  session = factor(c(1, 2), levels = c(1, 2))
+)
+
+# Predict meanFix across this grid, considering interactions
+pred_data$meanFix_predicted <- predict(m_correct, newdata = pred_data, re.form = NA)
+
+# Plot, showcasing interactions
+ggplot(pred_data, aes(x = poly2, y = meanFix_predicted, color = Object)) +
+  geom_line() +
+  geom_point(data = df_gca_correct, aes(x = poly2, y = meanFix, color = Object), alpha = 0.5) +
+  facet_grid(Object ~ session) +
+  labs(title = "Predicted meanFix across poly2, with interactions",
+       x = "poly2",
+       y = "Predicted meanFix") +
+  theme_minimal()
+```
+
+```{r}
+df_gca_semantic = df_gca %>%
+  filter(BIN_INDEX < 30.1) %>%
+  filter(Object %in% c("semantic", "a_unrelated"))
+
+m_semantic = lmer(meanFix~(poly1 + poly2) * Object * session + (poly1 + poly2 | subj) + 
+            (poly1 + poly2 | subj:Object), 
+            data=subset(df_gca_semantic),REML=F)
+
+summary(m_semantic)
+```

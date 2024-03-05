@@ -8,11 +8,14 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(gazer)
+library(readr)
 ```
 
 Load data:
 
 This step involves loading 41 of the participant data files and then converting all columns to character values. This was a necessary step to autoload all data. I will change data types as it becomes necessary below.
+
+****SKIP THIS STEP IF YOU DO NOT HAVE THE INDIVIDUAL LEVEL SUBJECT DATA IN YOUR DIRECTORY***
 
 ```{r, include=FALSE}
 folder_path = 'all_data/updated_xls_format'
@@ -38,6 +41,7 @@ head(df)
 Extract participant and session names from the datafiles
 
 ```{r}
+df = read.csv('vwp_raw_data_concatenated.csv')
 df = df %>%
   mutate(participant = str_extract(file_name, "(?<=updated_xls_format/)\\d+"),
          session = str_extract(file_name, "(?<=_)\\d+"))
